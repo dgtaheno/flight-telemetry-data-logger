@@ -28,25 +28,63 @@ bool BMP388Sensor::begin()
 
     altitudeOffset = bmp.readAltitude(SEALEVELPRESSURE_HPA);
 
+    update();
+
+    return true;
+}
+
+bool BMP388Sensor::selfTest()
+{
+    if (!bmp.performReading())
+    {
+        return false;
+    }
+
+    float temperature = bmp.temperature;
+    float pressure = bmp.pressure / 100.0f;
+
+    if (temperature < -40.0f || temperature > 85.0f)
+    {
+        return false;
+    }
+
+    if (pressure < 300.0f || pressure > 1200.0f)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+bool BMP388Sensor::update()
+{
+    if (!bmp.performReading())
+    {
+        return false;
+    }
+
+    temperature = bmp.temperature;
+
+    pressure = bmp.pressure / 100.0f;
+
+    relativeAltitude =
+        bmp.readAltitude(SEALEVELPRESSURE_HPA)
+        - altitudeOffset;
+
     return true;
 }
 
 float BMP388Sensor::getTemperature()
 {
-    bmp.performReading();
-    return bmp.temperature;
+    return temperature;
 }
 
 float BMP388Sensor::getPressure()
 {
-    bmp.performReading();
-    return bmp.pressure / 100.0f;
+    return pressure;
 }
 
 float BMP388Sensor::getRelativeAltitude()
 {
-    bmp.performReading();
-
-    return bmp.readAltitude(SEALEVELPRESSURE_HPA)
-           - altitudeOffset;
+    return relativeAltitude;
 }
