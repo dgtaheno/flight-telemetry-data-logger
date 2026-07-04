@@ -14,31 +14,31 @@ Develop a modular flight computer capable of:
 - GPS tracking
 - LoRa telemetry
 - Power monitoring
-- Hardware self-test at startup
+- Hardware self-diagnostics
 
-The project is being developed incrementally, validating each hardware module before adding the next one.
+The project is being developed incrementally, validating each hardware module before integrating the next subsystem.
 
 ---
 
 # Current Status
 
-## Working Modules
+## Sprint 1 ✅
 
-### ESP32 DevKitC V4
+ESP32 bring-up.
 
-Status:
+Validated:
 
-```text
-PASS ✅
-```
+- ESP32 DevKitC V4
+- PlatformIO environment
+- GitHub integration
+- Firmware upload
+- Serial monitoring
 
-### BMP388 Barometric Sensor
+---
 
-Status:
+## Sprint 2 ✅
 
-```text
-PASS ✅
-```
+BMP388 integration.
 
 Validated:
 
@@ -46,44 +46,57 @@ Validated:
 - I2C communication
 - Temperature measurement
 - Pressure measurement
-- Relative altitude calibration
+- Relative altitude calculation
 
-Example output:
+Example:
 
 ```text
-Temperature: 24.32 C
-Pressure: 1016.37 hPa
-Relative Altitude: 0.01 m
+T=24.28 P=1011.39 Alt=-0.06 m
 ```
 
-### microSD Module
+---
 
-Status:
+## Sprint 3 ✅
+
+Firmware modularization.
+
+Implemented:
 
 ```text
-PASS ✅
+BMP388Sensor
+ ├── begin()
+ ├── selfTest()
+ ├── update()
+ ├── getTemperature()
+ ├── getPressure()
+ └── getRelativeAltitude()
+```
+
+---
+
+## Sprint 4 ✅
+
+Power-On Self Test (POST) and flight data logging.
+
+Implemented:
+
+```text
+SDLogger
+ ├── begin()
+ ├── selfTest()
+ ├── createLogFile()
+ ├── getLogFileName()
+ └── writeData()
 ```
 
 Validated:
 
-- SD card detection
-- FAT32 support
-- SDXC support
-- File creation
-- File writing
-- File reading
-
-Example output:
-
-```text
-SD CARD DETECTED
-Card Size: 60000 MB
-
-File written
-
-File contents:
-Hello Flight Telemetry Logger
-```
+- microSD detection
+- Read/write verification
+- Automatic CSV generation
+- One flight log per boot session
+- Self-test cleanup
+- User-friendly diagnostics
 
 ---
 
@@ -91,11 +104,11 @@ Hello Flight Telemetry Logger
 
 ## ESP32 DevKitC V4
 
-Main controller.
+Main flight computer.
 
 ---
 
-## BMP388 Barometric Sensor
+## BMP388
 
 ### Wiring
 
@@ -119,10 +132,11 @@ Voltage   : 3.3V
 ### Validated Features
 
 ```text
-✓ Sensor detection
+✓ Detection
 ✓ Temperature
 ✓ Pressure
 ✓ Relative altitude
+✓ Self-test
 ```
 
 ---
@@ -142,11 +156,9 @@ SCK      ----------   GPIO18
 CS       ----------   GPIO5
 ```
 
-### Power Requirement
+### Important Power Note
 
-Important:
-
-This module was NOT reliably detected when powered from:
+The module was NOT reliably detected when powered from:
 
 ```text
 3.3V
@@ -158,61 +170,51 @@ The module only worked correctly when connected to:
 ESP32 5V -> microSD VCC
 ```
 
-Validated functions:
+### Validated Features
 
 ```text
 ✓ Card detection
-✓ FAT32 mount
+✓ FAT32 support
 ✓ 64 GB SDXC support
-✓ File creation
-✓ File writing
-✓ File reading
+✓ Read/write verification
+✓ CSV logging
+✓ Automatic log creation
+✓ Self-test
 ```
 
 ---
 
-# Software Architecture
+# System Architecture
 
-Each hardware module should implement:
+Each hardware module follows the same pattern:
 
 ```cpp
 bool begin();
 bool selfTest();
 ```
 
-Purpose:
+Sensor modules additionally support:
 
-- Detect hardware failures early
-- Simplify debugging
-- Ensure the system starts only when critical hardware is operational
+```cpp
+bool update();
+```
+
+This architecture enables:
+
+```text
+System
+ ├── Initialization
+ ├── Self-test
+ ├── Validation
+ ├── Operation
+ └── Logging
+```
 
 ---
 
 # Power-On Self Test (POST)
 
-Planned startup sequence:
-
-```text
-Power On
-   |
-   v
-BMP388 Self Test
-   |
-   v
-microSD Self Test
-   |
-   v
-GPS Self Test
-   |
-   v
-LoRa Self Test
-   |
-   v
-INA219 Self Test
-   |
-   v
-System READY
-```
+Executed at every boot.
 
 Example:
 
@@ -221,27 +223,60 @@ Example:
 Flight Telemetry & Data Logger
 ================================
 
-[PASS] BMP388 detected
-[PASS] microSD detected
+Running Power-On Self Test (POST)...
 
+[PASS] BMP388 sensor
+[PASS] SD card
+[PASS] Flight log: /flight_boot_007.csv
+
+All systems passed
 System READY
 ```
 
-Critical failure:
+Failure example:
 
 ```text
-[FAIL] BMP388 not detected
+[FAIL] SD card not detected
+
+Please check:
+ - microSD card is inserted
+ - SD module wiring
+ - SD module power supply (5V)
+ - SD card format (FAT32)
 
 System HALTED
 ```
 
-Non-critical failure:
+---
+
+# Flight Logging
+
+A new CSV file is automatically created for every boot session.
+
+Example:
 
 ```text
-[WARN] GPS not detected
-
-Continuing without GPS
+flight_boot_001.csv
+flight_boot_002.csv
+flight_boot_003.csv
 ```
+
+CSV format:
+
+```csv
+timestamp_s,temperature_c,pressure_hpa,altitude_m
+1,24.15,1011.72,0.08
+2,24.16,1011.73,0.01
+3,24.16,1011.74,-0.01
+```
+
+Current timestamp source:
+
+```text
+System uptime (seconds)
+```
+
+Future versions will use GPS UTC time.
 
 ---
 
@@ -257,9 +292,8 @@ flight-telemetry-data-logger
 │       │
 │       ├── include
 │       ├── lib
-│       │   └── BMP388Sensor
-│       │       ├── BMP388Sensor.cpp
-│       │       └── BMP388Sensor.h
+│       │   ├── BMP388Sensor
+│       │   └── SDLogger
 │       │
 │       ├── src
 │       ├── test
@@ -273,72 +307,16 @@ flight-telemetry-data-logger
 
 # Development Principles
 
-1. Add only one hardware module at a time.
-2. Validate hardware before writing complex software.
-3. Commit every working milestone.
-4. Never integrate multiple untested modules simultaneously.
-5. Every module must have a self-test.
-6. Hardware must be validated before proceeding to the next sprint.
+1. Add one hardware module at a time.
+2. Validate hardware before integration.
+3. Implement self-tests for every module.
+4. Commit only completed and validated milestones.
+5. Prefer modular architecture over monolithic code.
+6. Fail safely when critical hardware is unavailable.
 
 ---
 
-# Project Milestones
-
-## v0.1.0
-
-- ESP32 setup
-- GitHub integration
-- PlatformIO setup
-
-## v0.1.1
-
-- BMP388 integration
-- Relative altitude calibration
-
-## v0.2.0
-
-- BMP388 refactored into reusable module
-- microSD detection
-- File I/O validation
-
----
-
-# Next Milestones
-
-## v0.3.0
-
-- BMP388 self-test
-- microSD self-test
-- System POST
-
-## v0.4.0
-
-- CSV flight logging
-
-Example:
-
-```csv
-time_s,temperature_c,pressure_hpa,altitude_m
-0,24.32,1016.37,0.01
-1,24.33,1016.36,-0.02
-2,24.35,1016.38,0.04
-```
-
-## v0.5.0
-
-- GPS integration
-
-## v0.6.0
-
-- LoRa telemetry
-
-## v0.7.0
-
-- INA219 power monitoring
-
----
-
-# Hardware Validation Summary
+# Hardware Validation Matrix
 
 | Module | Status |
 |----------|----------|
@@ -351,26 +329,43 @@ time_s,temperature_c,pressure_hpa,altitude_m
 
 ---
 
-# Notes
+# Completed Milestones
 
-Current validated hardware:
+## v0.1.0
 
-```text
-ESP32 DevKitC V4
-BMP388
-microSD
-```
+- ESP32 setup
+- PlatformIO setup
+- GitHub integration
 
-Current validated storage:
+## v0.2.0
 
-```text
-64 GB SDXC
-FAT32
-```
+- BMP388 integration
+- Relative altitude calibration
 
-Current validated operating voltages:
+## v0.3.0
 
-```text
-BMP388  -> 3.3V
-microSD -> 5V
-```
+- BMP388 modularization
+- Self-test implementation
+
+## v0.4.0
+
+- SDLogger module
+- Power-On Self Test (POST)
+- CSV flight logging
+- One log per boot session
+- User-friendly diagnostics
+
+---
+
+# Next Milestone
+
+## v0.5.0
+
+GPS integration:
+
+- Latitude
+- Longitude
+- Speed
+- GPS altitude
+- UTC timestamp source
+- Timestamped flight log filenames
