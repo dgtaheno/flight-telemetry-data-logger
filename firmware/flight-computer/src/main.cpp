@@ -1,18 +1,19 @@
 #include <Arduino.h>
-#include "BMP388Sensor.h"
+#include <SPI.h>
+#include <SD.h>
 
-BMP388Sensor bmp;
+#define SD_CS 5
 
 void setup()
 {
     Serial.begin(115200);
 
     Serial.println();
-    Serial.println("Flight Telemetry & Data Logger");
+    Serial.println("SD Write Test");
 
-    if (!bmp.begin())
+    if (!SD.begin(SD_CS))
     {
-        Serial.println("BMP388 ERROR");
+        Serial.println("SD CARD NOT FOUND");
 
         while (1)
         {
@@ -20,24 +21,39 @@ void setup()
         }
     }
 
-    Serial.println("BMP388 OK");
+    Serial.println("SD CARD DETECTED");
+
+    File file = SD.open("/test.txt", FILE_WRITE);
+
+    if (!file)
+    {
+        Serial.println("Failed to create file");
+        return;
+    }
+
+    file.println("Hello Flight Telemetry Logger");
+    file.close();
+
+    Serial.println("File written");
+
+    file = SD.open("/test.txt");
+
+    if (!file)
+    {
+        Serial.println("Failed to read file");
+        return;
+    }
+
+    Serial.println("File contents:");
+
+    while (file.available())
+    {
+        Serial.write(file.read());
+    }
+
+    file.close();
 }
 
 void loop()
 {
-    Serial.print("Temperature: ");
-    Serial.print(bmp.getTemperature(), 2);
-    Serial.println(" C");
-
-    Serial.print("Pressure: ");
-    Serial.print(bmp.getPressure(), 2);
-    Serial.println(" hPa");
-
-    Serial.print("Relative Altitude: ");
-    Serial.print(bmp.getRelativeAltitude(), 2);
-    Serial.println(" m");
-
-    Serial.println();
-
-    delay(1000);
 }
