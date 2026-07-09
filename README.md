@@ -1,22 +1,22 @@
 # Flight Telemetry & Data Logger
 
-ESP32-based flight telemetry and data logger project.
+ESP32-based modular flight telemetry and data logging system.
 
 ---
 
-# Project Goal
+# Project Objective
 
 Develop a modular flight computer capable of:
 
-- Altitude measurement
-- Environmental monitoring
 - Flight data logging
-- GPS tracking
+- Barometric altitude measurement
+- GPS positioning
+- GPS time synchronization
 - LoRa telemetry
 - Power monitoring
 - Hardware self-diagnostics
 
-The project is being developed incrementally, validating each hardware module before integrating the next subsystem.
+The project follows an incremental development approach where each hardware module is fully validated before integration.
 
 ---
 
@@ -30,9 +30,9 @@ Validated:
 
 - ESP32 DevKitC V4
 - PlatformIO environment
-- GitHub integration
 - Firmware upload
 - Serial monitoring
+- GitHub integration
 
 ---
 
@@ -42,17 +42,11 @@ BMP388 integration.
 
 Validated:
 
-- Sensor detection
 - I2C communication
+- Sensor detection
 - Temperature measurement
 - Pressure measurement
 - Relative altitude calculation
-
-Example:
-
-```text
-T=24.28 P=1011.39 Alt=-0.06 m
-```
 
 ---
 
@@ -64,39 +58,72 @@ Implemented:
 
 ```text
 BMP388Sensor
- ├── begin()
- ├── selfTest()
- ├── update()
- ├── getTemperature()
- ├── getPressure()
- └── getRelativeAltitude()
+SDLogger
+```
+
+using a common architecture:
+
+```cpp
+begin()
+selfTest()
+update()
 ```
 
 ---
 
 ## Sprint 4 ✅
 
-Power-On Self Test (POST) and flight data logging.
-
-Implemented:
-
-```text
-SDLogger
- ├── begin()
- ├── selfTest()
- ├── createLogFile()
- ├── getLogFileName()
- └── writeData()
-```
+Power-On Self Test (POST) and SD logging.
 
 Validated:
 
-- microSD detection
+- microSD communication
 - Read/write verification
-- Automatic CSV generation
-- One flight log per boot session
-- Self-test cleanup
+- Automatic CSV creation
+- One log file per boot
 - User-friendly diagnostics
+
+Example:
+
+```text
+flight_boot_001.csv
+flight_boot_002.csv
+flight_boot_003.csv
+```
+
+---
+
+## Sprint 5 ✅
+
+GPS integration.
+
+Validated:
+
+✅ u-blox NEO-M9N-008-00
+
+✅ GPS FIX acquisition
+
+✅ UART communication
+
+✅ TinyGPSPlus integration
+
+✅ Latitude acquisition
+
+✅ Longitude acquisition
+
+✅ GPS altitude acquisition
+
+✅ GPS speed acquisition
+
+✅ UTC date acquisition
+
+✅ UTC time acquisition
+
+✅ Local time conversion
+
+✅ GPS data logging to SD card
+
+✅ GPS information displayed on serial console
 
 ---
 
@@ -106,14 +133,23 @@ Validated:
 
 Main flight computer.
 
+Responsibilities:
+
+```text
+Sensor acquisition
+GPS processing
+Data logging
+Telemetry management
+```
+
 ---
 
-## BMP388
+## BMP388 Barometric Sensor
 
 ### Wiring
 
 ```text
-BMP388                ESP32 DevKitC V4
+BMP388                ESP32
 
 VIN      ----------   3V3
 GND      ----------   GND
@@ -121,18 +157,9 @@ SCK      ----------   GPIO22
 SDI      ----------   GPIO21
 ```
 
-### Configuration
+### Features
 
 ```text
-Interface : I2C
-Address   : 0x77
-Voltage   : 3.3V
-```
-
-### Validated Features
-
-```text
-✓ Detection
 ✓ Temperature
 ✓ Pressure
 ✓ Relative altitude
@@ -146,7 +173,7 @@ Voltage   : 3.3V
 ### Wiring
 
 ```text
-microSD Module        ESP32 DevKitC V4
+microSD Module        ESP32
 
 VCC      ----------   5V
 GND      ----------   GND
@@ -156,65 +183,169 @@ SCK      ----------   GPIO18
 CS       ----------   GPIO5
 ```
 
-### Important Power Note
-
-The module was NOT reliably detected when powered from:
+### Validated Configuration
 
 ```text
-3.3V
+Supply Voltage = 5V
 ```
 
-The module only worked correctly when connected to:
+### Features
 
 ```text
-ESP32 5V -> microSD VCC
-```
-
-### Validated Features
-
-```text
-✓ Card detection
 ✓ FAT32 support
-✓ 64 GB SDXC support
 ✓ Read/write verification
 ✓ CSV logging
-✓ Automatic log creation
+✓ Automatic file creation
 ✓ Self-test
 ```
 
 ---
 
-# System Architecture
+## GPS Receiver
 
-Each hardware module follows the same pattern:
-
-```cpp
-bool begin();
-bool selfTest();
-```
-
-Sensor modules additionally support:
-
-```cpp
-bool update();
-```
-
-This architecture enables:
+### Model
 
 ```text
-System
- ├── Initialization
- ├── Self-test
- ├── Validation
- ├── Operation
- └── Logging
+u-blox NEO-M9N-008-00
+```
+
+### Interface
+
+```text
+UART2
+38400 baud
+```
+
+### Wiring
+
+```text
+GPS                  ESP32
+
+VCC      ----------  5V
+GND      ----------  GND
+
+TX       ----------  GPIO16
+RX       ----------  GPIO17
+```
+
+### Validated Features
+
+```text
+✓ UART communication
+✓ TinyGPSPlus integration
+✓ GPS FIX
+✓ UTC date
+✓ UTC time
+✓ Local time conversion
+✓ Latitude
+✓ Longitude
+✓ Speed
+✓ GPS altitude
+```
+
+### Example Live Data
+
+```text
+GPS Fix     : YES
+
+Latitude    : 53.664991
+Longitude   : 10.233019
+
+GPS Alt     : 48.5 m
+
+Speed       : 0.94 km/h
+
+UTC Date    : 2026-07-05
+UTC Time    : 08:19:07
+
+Local Time  : 10:19:07
+```
+
+### Supported Constellations
+
+Validated reception of:
+
+```text
+GPS
+GLONASS
+Galileo
+BeiDou
+```
+
+---
+
+# Software Architecture
+
+```text
+Flight Computer
+│
+├── BMP388Sensor
+│   ├── begin()
+│   ├── selfTest()
+│   └── update()
+│
+├── GPSSensor
+│   ├── begin()
+│   ├── selfTest()
+│   ├── update()
+│   ├── hasFix()
+│   ├── getLatitude()
+│   ├── getLongitude()
+│   ├── getAltitude()
+│   ├── getSpeed()
+│   ├── getUtcDate()
+│   ├── getUtcTime()
+│   ├── getLocalDate()
+│   └── getLocalTime()
+│
+├── SDLogger
+│   ├── begin()
+│   ├── selfTest()
+│   ├── createLogFile()
+│   ├── getLogFileName()
+│   └── writeData()
+│
+└── Main Application
+```
+
+---
+
+# Configuration System
+
+Centralized system configuration:
+
+```text
+include/Config.h
+```
+
+Examples:
+
+```cpp
+#define GPS_UART_BAUDRATE      38400
+#define GPS_RX_PIN             16
+#define GPS_TX_PIN             17
+
+#define SD_CS_PIN              5
+
+#define LOG_INTERVAL_MS        1000
+
+#define UTC_OFFSET_HOURS       2
+```
+
+Benefits:
+
+```text
+✓ Hardware abstraction
+✓ Single configuration point
+✓ Easier maintenance
+✓ Simpler future expansion
 ```
 
 ---
 
 # Power-On Self Test (POST)
 
-Executed at every boot.
+Executed automatically during startup.
 
 Example:
 
@@ -227,145 +358,93 @@ Running Power-On Self Test (POST)...
 
 [PASS] BMP388 sensor
 [PASS] SD card
-[PASS] Flight log: /flight_boot_007.csv
+[PASS] GPS receiver
+[PASS] Flight log: /flight_boot_003.csv
 
 All systems passed
 System READY
 ```
 
-Failure example:
-
-```text
-[FAIL] SD card not detected
-
-Please check:
- - microSD card is inserted
- - SD module wiring
- - SD module power supply (5V)
- - SD card format (FAT32)
-
-System HALTED
-```
-
 ---
 
-# Flight Logging
+# Data Logging
 
-A new CSV file is automatically created for every boot session.
+Current CSV format:
+
+```csv
+timestamp_s,
+temperature_c,
+pressure_hpa,
+bmp_altitude_m,
+gps_fix,
+latitude,
+longitude,
+gps_altitude_m,
+speed_kmh
+```
 
 Example:
 
+```csv
+1,23.61,1011.53,0.06,1,53.664991,10.233019,48.5,0.94
+2,23.61,1011.53,0.11,1,53.664990,10.233021,48.5,0.81
+3,23.61,1011.55,-0.03,1,53.664988,10.233027,48.3,1.43
+```
+
+Current filename format:
+
 ```text
-flight_boot_001.csv
-flight_boot_002.csv
 flight_boot_003.csv
 ```
 
-CSV format:
-
-```csv
-timestamp_s,temperature_c,pressure_hpa,altitude_m
-1,24.15,1011.72,0.08
-2,24.16,1011.73,0.01
-3,24.16,1011.74,-0.01
-```
-
-Current timestamp source:
+Planned filename format:
 
 ```text
-System uptime (seconds)
+flight_2026-07-05_10-19-07.csv
 ```
 
-Future versions will use GPS UTC time.
+using GPS local time.
 
 ---
 
-# Repository Structure
+# Altitude Strategy
+
+Two altitude sources are intentionally maintained separately.
+
+## GPS Altitude
+
+Provides:
 
 ```text
-flight-telemetry-data-logger
-│
-├── docs
-├── hardware
-├── firmware
-│   └── flight-computer
-│       │
-│       ├── include
-│       ├── lib
-│       │   ├── BMP388Sensor
-│       │   └── SDLogger
-│       │
-│       ├── src
-│       ├── test
-│       └── platformio.ini
-│
-├── README.md
-└── LICENSE
+Absolute altitude above sea level
+```
+
+Advantages:
+
+```text
+Absolute reference
+No weather-induced drift
+```
+
+Limitations:
+
+```text
+Higher noise
+Lower vertical precision
 ```
 
 ---
 
-# Development Principles
+## BMP388 Altitude
 
-1. Add one hardware module at a time.
-2. Validate hardware before integration.
-3. Implement self-tests for every module.
-4. Commit only completed and validated milestones.
-5. Prefer modular architecture over monolithic code.
-6. Fail safely when critical hardware is unavailable.
+Provides:
 
----
+```text
+Relative altitude from startup point
+```
 
-# Hardware Validation Matrix
+Advantages:
 
-| Module | Status |
-|----------|----------|
-| ESP32 DevKitC V4 | ✅ PASS |
-| BMP388 | ✅ PASS |
-| microSD | ✅ PASS |
-| GPS | ⏳ Planned |
-| LoRa | ⏳ Planned |
-| INA219 | ⏳ Planned |
-
----
-
-# Completed Milestones
-
-## v0.1.0
-
-- ESP32 setup
-- PlatformIO setup
-- GitHub integration
-
-## v0.2.0
-
-- BMP388 integration
-- Relative altitude calibration
-
-## v0.3.0
-
-- BMP388 modularization
-- Self-test implementation
-
-## v0.4.0
-
-- SDLogger module
-- Power-On Self Test (POST)
-- CSV flight logging
-- One log per boot session
-- User-friendly diagnostics
-
----
-
-# Next Milestone
-
-## v0.5.0
-
-GPS integration:
-
-- Latitude
-- Longitude
-- Speed
-- GPS altitude
-- UTC timestamp source
-- Timestamped flight log filenames
+```text
+High resolution
+Low noise

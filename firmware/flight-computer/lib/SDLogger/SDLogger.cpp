@@ -1,15 +1,15 @@
 #include "SDLogger.h"
 
+#include "../../include/Config.h"
+
 #include <Arduino.h>
 #include <SPI.h>
 #include <SD.h>
 #include <string.h>
 
-#define SD_CS 5
-
 bool SDLogger::begin()
 {
-    return SD.begin(SD_CS);
+    return SD.begin(SD_CS_PIN);
 }
 
 const char* SDLogger::getLogFileName()
@@ -21,7 +21,6 @@ bool SDLogger::selfTest()
 {
     const char* testFile = "/selftest.tmp";
 
-    // Create temporary file
     File file = SD.open(testFile, FILE_WRITE);
 
     if (!file)
@@ -32,7 +31,6 @@ bool SDLogger::selfTest()
     file.println("SELF TEST OK");
     file.close();
 
-    // Verify file can be read
     file = SD.open(testFile);
 
     if (!file)
@@ -42,7 +40,6 @@ bool SDLogger::selfTest()
 
     file.close();
 
-    // Remove temporary file
     SD.remove(testFile);
 
     return true;
@@ -50,15 +47,16 @@ bool SDLogger::selfTest()
 
 bool SDLogger::createLogFile()
 {
-    char fileName[32];
+    char fileName[64];
 
     int index = 1;
 
     while (true)
     {
-        sprintf(fileName,
-                "/flight_boot_%03d.csv",
-                index);
+        sprintf(
+            fileName,
+            "/flight_boot_%03d.csv",
+            index);
 
         if (!SD.exists(fileName))
         {
@@ -78,7 +76,15 @@ bool SDLogger::createLogFile()
     }
 
     file.println(
-        "timestamp_s,temperature_c,pressure_hpa,altitude_m");
+        "timestamp_s,"
+        "temperature_c,"
+        "pressure_hpa,"
+        "bmp_altitude_m,"
+        "gps_fix,"
+        "latitude,"
+        "longitude,"
+        "gps_altitude_m,"
+        "speed_kmh");
 
     file.close();
 
@@ -86,10 +92,15 @@ bool SDLogger::createLogFile()
 }
 
 bool SDLogger::writeData(
-    unsigned long timeSeconds,
+    unsigned long timestamp,
     float temperature,
     float pressure,
-    float altitude)
+    float bmpAltitude,
+    bool gpsFix,
+    double latitude,
+    double longitude,
+    float gpsAltitude,
+    float speed)
 {
     File file = SD.open(logFileName, FILE_APPEND);
 
@@ -98,16 +109,31 @@ bool SDLogger::writeData(
         return false;
     }
 
-    file.print(timeSeconds);
+    file.print(timestamp);
     file.print(",");
 
-    file.print(temperature, 2);
+    file.print(temperature, CSV_DECIMAL_PLACES);
     file.print(",");
 
-    file.print(pressure, 2);
+    file.print(pressure, CSV_DECIMAL_PLACES);
     file.print(",");
 
-    file.println(altitude, 2);
+    file.print(bmpAltitude, CSV_DECIMAL_PLACES);
+    file.print(",");
+
+    file.print(gpsFix ? 1 : 0);
+    file.print(",");
+
+    file.print(latitude, 6);
+    file.print(",");
+
+    file.print(longitude, 6);
+    file.print(",");
+
+    file.print(gpsAltitude, 1);
+    file.print(",");
+
+    file.println(speed, 2);
 
     file.close();
 
