@@ -91,6 +91,86 @@ bool SDLogger::createLogFile()
     return true;
 }
 
+bool SDLogger::createLogFile(
+    const String& localDate,
+    const String& localTime)
+{
+    if (localDate == "0000-00-00" || localTime == "00:00:00")
+    {
+        return createLogFile();
+    }
+
+    char safeTime[16];
+
+    localTime.toCharArray(
+        safeTime,
+        sizeof(safeTime));
+
+    for (int i = 0; safeTime[i] != '\0'; i++)
+    {
+        if (safeTime[i] == ':')
+        {
+            safeTime[i] = '-';
+        }
+    }
+
+    char baseName[64];
+
+    sprintf(
+        baseName,
+        "/flight_%s_%s.csv",
+        localDate.c_str(),
+        safeTime);
+
+    if (!SD.exists(baseName))
+    {
+        strcpy(logFileName, baseName);
+    }
+    else
+    {
+        int index = 1;
+
+        while (true)
+        {
+            sprintf(
+                logFileName,
+                "/flight_%s_%s_%03d.csv",
+                localDate.c_str(),
+                safeTime,
+                index);
+
+            if (!SD.exists(logFileName))
+            {
+                break;
+            }
+
+            index++;
+        }
+    }
+
+    File file = SD.open(logFileName, FILE_WRITE);
+
+    if (!file)
+    {
+        return false;
+    }
+
+    file.println(
+        "timestamp_s,"
+        "temperature_c,"
+        "pressure_hpa,"
+        "bmp_altitude_m,"
+        "gps_fix,"
+        "latitude,"
+        "longitude,"
+        "gps_altitude_m,"
+        "speed_kmh");
+
+    file.close();
+
+    return true;
+}
+
 bool SDLogger::writeData(
     unsigned long timestamp,
     float temperature,

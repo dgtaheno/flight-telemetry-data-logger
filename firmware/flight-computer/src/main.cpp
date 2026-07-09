@@ -5,12 +5,18 @@
 #include "SDLogger.h"
 #include "GPSSensor.h"
 
-// System modules
+// --------------------------------------------------
+// System Modules
+// --------------------------------------------------
+
 BMP388Sensor bmp;
 SDLogger logger;
 GPSSensor gps;
 
-// Controls the telemetry logging interval
+// --------------------------------------------------
+// Timing
+// --------------------------------------------------
+
 unsigned long lastLog = 0;
 
 void setup()
@@ -112,8 +118,67 @@ void setup()
 #endif
 
     // --------------------------------------------------
-    // Flight Log
+    // Wait for GPS Fix
     // --------------------------------------------------
+
+#if GPS_ENABLED
+
+    unsigned long gpsStart = millis();
+
+    while ((millis() - gpsStart) <
+           (GPS_FIX_TIMEOUT_SECONDS * 1000UL))
+    {
+        gps.update();
+
+        if (gps.hasFix())
+        {
+            break;
+        }
+
+        delay(50);
+    }
+
+#endif
+
+    // --------------------------------------------------
+    // Create Flight Log
+    // --------------------------------------------------
+
+#if GPS_ENABLED
+
+    if (gps.hasFix())
+    {
+        Serial.println("[INFO] Creating GPS timestamped log file");
+
+        if (!logger.createLogFile(
+                gps.getLocalDate(),
+                gps.getLocalTime()))
+        {
+            Serial.println("[FAIL] Flight log creation failed");
+
+            while (1)
+            {
+                delay(1000);
+            }
+        }
+    }
+    else
+    {
+        Serial.println("[WARN] GPS fix unavailable");
+        Serial.println("[INFO] Using fallback filename");
+
+        if (!logger.createLogFile())
+        {
+            Serial.println("[FAIL] Flight log creation failed");
+
+            while (1)
+            {
+                delay(1000);
+            }
+        }
+    }
+
+#else
 
     if (!logger.createLogFile())
     {
@@ -124,6 +189,8 @@ void setup()
             delay(1000);
         }
     }
+
+#endif
 
     Serial.print("[PASS] Flight log: ");
     Serial.println(logger.getLogFileName());
@@ -171,13 +238,13 @@ void loop()
         double latitude = 0.0;
         double longitude = 0.0;
 
-        float gpsAltitude = 0.0;
-        float gpsSpeed = 0.0;
+        float gpsAltitude = 0.0f;
+        float gpsSpeed = 0.0f;
 
 #endif
 
         // --------------------------------------------------
-        // Store telemetry
+        // Store Telemetry
         // --------------------------------------------------
 
         logger.writeData(
