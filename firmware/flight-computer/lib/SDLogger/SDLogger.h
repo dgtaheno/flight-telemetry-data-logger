@@ -33,5 +33,6 @@ public:
         double latitude,
         double longitude,
         float gpsAltitude,
+        float flightAltitude,
         float speed);
 };

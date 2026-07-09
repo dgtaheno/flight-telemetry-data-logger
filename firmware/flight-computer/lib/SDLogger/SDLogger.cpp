@@ -84,6 +84,7 @@ bool SDLogger::createLogFile()
         "latitude,"
         "longitude,"
         "gps_altitude_m,"
+        "flight_altitude_m,"
         "speed_kmh");
 
     file.close();
@@ -164,6 +165,7 @@ bool SDLogger::createLogFile(
         "latitude,"
         "longitude,"
         "gps_altitude_m,"
+        "flight_altitude_m,"
         "speed_kmh");
 
     file.close();
@@ -180,6 +182,7 @@ bool SDLogger::writeData(
     double latitude,
     double longitude,
     float gpsAltitude,
+    float flightAltitude,
     float speed)
 {
     File file = SD.open(logFileName, FILE_APPEND);
@@ -211,6 +214,9 @@ bool SDLogger::writeData(
     file.print(",");
 
     file.print(gpsAltitude, 1);
+    file.print(",");
+
+    file.print(flightAltitude, CSV_DECIMAL_PLACES);
     file.print(",");
 
     file.println(speed, 2);

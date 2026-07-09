@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <math.h>
 
 #include "Config.h"
 #include "BMP388Sensor.h"
@@ -18,6 +19,13 @@ GPSSensor gps;
 // --------------------------------------------------
 
 unsigned long lastLog = 0;
+
+// --------------------------------------------------
+// GPS Altitude Reference
+// --------------------------------------------------
+
+bool gpsReferenceCaptured = false;
+float gpsReferenceAltitude = 0.0f;
 
 void setup()
 {
@@ -117,11 +125,11 @@ void setup()
 
 #endif
 
+#if GPS_ENABLED
+
     // --------------------------------------------------
     // Wait for GPS Fix
     // --------------------------------------------------
-
-#if GPS_ENABLED
 
     unsigned long gpsStart = millis();
 
@@ -231,6 +239,15 @@ void loop()
         float gpsAltitude = gps.getAltitude();
         float gpsSpeed = gps.getSpeed();
 
+        // --------------------------------------------------
+        // GPS Speed Deadband
+        // --------------------------------------------------
+
+        if (fabs(gpsSpeed) < GPS_SPEED_DEADBAND_KMH)
+        {
+            gpsSpeed = 0.0f;
+        }
+
 #else
 
         bool gpsFix = false;
@@ -242,6 +259,37 @@ void loop()
         float gpsSpeed = 0.0f;
 
 #endif
+
+        // --------------------------------------------------
+        // Capture GPS Reference Altitude
+        // --------------------------------------------------
+
+        if (gpsFix && !gpsReferenceCaptured)
+        {
+            gpsReferenceAltitude = gpsAltitude;
+            gpsReferenceCaptured = true;
+
+            Serial.print("[INFO] GPS reference altitude captured: ");
+            Serial.print(gpsReferenceAltitude, 1);
+            Serial.println(" m");
+        }
+
+        // --------------------------------------------------
+        // Flight Altitude
+        // --------------------------------------------------
+
+        float flightAltitude = 0.0f;
+
+        if (gpsReferenceCaptured)
+        {
+            flightAltitude =
+                gpsReferenceAltitude +
+                bmpAltitude;
+        }
+        else
+        {
+            flightAltitude = gpsAltitude;
+        }
 
         // --------------------------------------------------
         // Store Telemetry
@@ -256,6 +304,7 @@ void loop()
             latitude,
             longitude,
             gpsAltitude,
+            flightAltitude,
             gpsSpeed);
 
         // --------------------------------------------------
@@ -296,6 +345,10 @@ void loop()
 
             Serial.print("GPS Alt     : ");
             Serial.print(gpsAltitude, 1);
+            Serial.println(" m");
+
+            Serial.print("Flight Alt  : ");
+            Serial.print(flightAltitude, 2);
             Serial.println(" m");
 
             Serial.print("Speed       : ");

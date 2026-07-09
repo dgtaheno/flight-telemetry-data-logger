@@ -5,7 +5,7 @@
 // =====================================================
 
 #define SYSTEM_NAME                "Flight Telemetry & Data Logger"
-#define SYSTEM_VERSION             "0.5.0"
+#define SYSTEM_VERSION             "0.7.0"
 
 // =====================================================
 // Installed Modules
@@ -29,6 +29,10 @@
 
 // Local time offset from UTC
 #define UTC_OFFSET_HOURS           2
+
+// Ignore GPS speed values below this threshold.
+// Helps eliminate GPS noise when the device is stationary.
+#define GPS_SPEED_DEADBAND_KMH     3.0f
 
 // =====================================================
 // BMP388 Configuration
