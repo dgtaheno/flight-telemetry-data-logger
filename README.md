@@ -5,7 +5,7 @@
 ![Platform](https://img.shields.io/badge/Platform-ESP32-blue)
 ![GPS](https://img.shields.io/badge/GPS-NEO--M9N-green)
 ![Sensor](https://img.shields.io/badge/Sensor-BMP388-orange)
-![Status](https://img.shields.io/badge/Status-Sprint_8.1A-success)
+![Status](https://img.shields.io/badge/Status-v0.8.1-success)
 ![Health](https://img.shields.io/badge/System_Health-Enabled-success)
 ![Events](https://img.shields.io/badge/Event_System-Enabled-success)
 
@@ -34,40 +34,43 @@ The project combines:
 
 ## GPS Navigation
 
-- GPS FIX detection
-- Latitude and longitude logging
-- GPS altitude
-- Ground speed measurement
-- UTC time acquisition
-- Automatic local time conversion
-- GPS timestamped log filenames
+- GPS Detection
+- GPS FIX Detection
+- Latitude and Longitude Logging
+- GPS Altitude
+- Ground Speed Measurement
+- UTC Time Acquisition
+- Automatic Local Time Conversion
+- GPS Timestamped Log Filenames
 
 ---
 
 ## Flight Altitude System
 
-- GPS altitude reference capture
-- BMP388 relative altitude
-- Flight altitude calculation
-- Stable altitude reference
-- GPS speed deadband filtering
+- GPS Altitude Reference Capture
+- BMP388 Relative Altitude
+- Flight Altitude Calculation
+- Stable Altitude Reference
+- GPS Speed Deadband Filtering
 
 ---
 
 ## Data Logging
 
-- Timestamped flight log creation
-- Automatic CSV generation
-- FAT32 support
-- Session based flight recording
-- Automatic fallback filename generation
+- Automatic CSV Generation
+- FAT32 Support
+- Session Based Flight Recording
+- Timestamped Flight Logs
+- GPS-Based Filenames
+- Fallback Filenames
+- SD Recovery Support
 
 ---
 
 ## Reliability
 
 - Power-On Self Test (POST)
-- Hardware validation at startup
+- Hardware Validation at Startup
 - Runtime Health Monitoring
 - Fault Flags
 - Error Counters
@@ -132,7 +135,7 @@ ESP32
 
 # System Health Monitoring
 
-The system continuously monitors the operational status of all critical modules.
+The system continuously monitors the operational state of all critical subsystems.
 
 Currently monitored:
 
@@ -146,8 +149,6 @@ MicroSD Storage
 
 ## Health States
 
-Each monitored subsystem can report:
-
 ```text
 OK
 WARNING
@@ -157,8 +158,6 @@ FAILED
 ---
 
 ## Fault Flags
-
-The system maintains runtime fault flags.
 
 ```text
 GPS = 0x01
@@ -178,18 +177,18 @@ SD failure active
 
 ## Error Counters
 
-The system records runtime failures.
+The system records runtime failures for:
 
 ```text
-GPS Errors
-BMP Errors
-SD Errors
+GPS
+BMP388
+SD Storage
 ```
 
 Example:
 
 ```text
-GPS Errors : 0
+GPS Errors : 1
 BMP Errors : 0
 SD Errors  : 3
 ```
@@ -200,19 +199,24 @@ SD Errors  : 3
 
 The firmware includes a runtime event detection and notification system.
 
-Currently supported events:
+Supported events:
 
 ```text
 SYSTEM_START
 SYSTEM_READY
 
+GPS_DETECTED
+GPS_LOST
+
+GPS_FIX_ACQUIRED
+GPS_FIX_LOST
+
+SD_DETECTED
 SD_WRITE_FAILED
 SD_REMOVED
 SD_INSERTED
 SD_RECOVERED
 ```
-
-The system detects state transitions and only generates events when a real change occurs.
 
 Example:
 
@@ -230,7 +234,7 @@ Example:
 
 ---
 
-## SD State Machine
+# SD State Machine
 
 The storage subsystem maintains an internal runtime state machine.
 
@@ -250,7 +254,7 @@ Example:
 SD Runtime State
 --------------------------------
 
-State              : REMOVED
+State               : REMOVED
 
 Consecutive Failures: 4
 
@@ -259,15 +263,13 @@ Write Failures      : 4
 Removal Count       : 1
 
 Recovery Count      : 0
-
---------------------------------
 ```
 
 ---
 
-## SD Diagnostics
+# SD Diagnostics
 
-The storage subsystem continuously monitors:
+Continuous SD monitoring includes:
 
 ```text
 Total Capacity
@@ -288,7 +290,7 @@ SD Free  : 34796 MB
 
 ---
 
-### Storage Warning Levels
+## Storage Warning Levels
 
 ```text
 WARNING  : 80 %
@@ -296,7 +298,7 @@ CRITICAL : 95 %
 FULL     : 99 %
 ```
 
-Possible SD fault codes:
+Supported SD Error Codes:
 
 ```text
 NOT_INITIALIZED
@@ -368,7 +370,7 @@ flight_YYYY-MM-DD_HH-MM-SS.csv
 Example:
 
 ```text
-flight_2026-07-11_17-56-43.csv
+flight_2026-07-11_23-01-48.csv
 ```
 
 Fallback:
@@ -396,29 +398,100 @@ speed_kmh
 
 ---
 
+# Validation Status
+
+## Successfully Validated
+
+✅ POST Validation
+
+✅ Startup without SD
+
+✅ Startup without GPS
+
+✅ Startup without BMP388
+
+✅ Runtime GPS Loss Detection
+
+✅ Fault Flags
+
+✅ Error Counters
+
+✅ Health Monitoring
+
+✅ SD Diagnostics
+
+✅ SD State Machine
+
+✅ SD Write Failure Detection
+
+✅ SD Removal Detection
+
+✅ SD Recovery Detection
+
+✅ Recovery Statistics
+
+✅ GPS Detection Timeout
+
+✅ GPS Stale Data Timeout
+
+✅ GPS Fix Timeout
+
+✅ GPS Speed Deadband
+
+✅ CSV Recovery Validation
+
+---
+
+## CSV Recovery Validation
+
+The system resumes logging after SD recovery.
+
+Observed sequence:
+
+```text
+24
+
+...
+
+65
+
+...
+
+106
+```
+
+Result:
+
+```text
+Logging resumes correctly.
+
+Records generated while the SD card is unavailable
+are currently lost.
+```
+
+This behavior will be addressed in the Buffered Logging sprint.
+
+---
+
 # Current Status
 
 ## Completed
 
-✅ ESP32 bring-up
+✅ ESP32 Bring-Up
 
-✅ BMP388 integration
+✅ BMP388 Integration
 
-✅ GPS integration
+✅ GPS Integration
 
-✅ TinyGPSPlus integration
+✅ TinyGPSPlus Integration
 
-✅ SD logging
+✅ SD Logging
 
 ✅ Power-On Self Test
 
-✅ GPS timestamped filenames
+✅ Health Monitoring
 
-✅ Flight altitude calculation
-
-✅ GPS speed deadband filtering
-
-✅ System Health Monitoring
+✅ Runtime Event System
 
 ✅ Fault Flags
 
@@ -426,54 +499,50 @@ speed_kmh
 
 ✅ SD Diagnostics
 
-✅ SD Capacity Monitoring
-
-✅ SD Usage Monitoring
-
-✅ Runtime Event System
-
 ✅ SD State Machine
 
-✅ SD Remove Detection
+✅ GPS Runtime Detection
+
+✅ GPS Startup Detection
 
 ✅ SD Recovery Detection
 
-✅ Recovery Statistics
+✅ CSV Recovery Validation
 
 ---
 
 ## In Progress
 
-🔄 SystemHealth / SystemEvents synchronization
-
 🔄 Buffered Logging
 
-🔄 Event Log File
+🔄 Circular Buffer
 
-🔄 Automatic Recovery
+🔄 Pending Records Counter
+
+🔄 Automatic SD Flush
 
 ---
 
 ## Planned
 
-⏳ LoRa telemetry
+⏳ LoRa Telemetry
 
-⏳ INA219 power monitoring
+⏳ INA219 Power Monitoring
 
-⏳ Ground station dashboard
+⏳ Ground Station Dashboard
 
-⏳ Flight analytics
+⏳ Flight Analytics
 
-⏳ FreeRTOS architecture
+⏳ FreeRTOS Architecture
 
 ---
 
 # Roadmap
 
-## Sprint 8
+## Sprint 8.0
 
 ```text
-System Health Monitoring
+Health Monitoring
 Fault Flags
 Error Counters
 SD Diagnostics
@@ -493,9 +562,11 @@ Recovery Statistics
 ## Sprint 8.1B
 
 ```text
-SystemHealth Synchronization
-SD Error Classification
-Event Log File
+GPS Hardware Detection
+GPS Runtime Loss Detection
+GPS Error Counter Logic
+Configuration Validation
+CSV Recovery Validation
 ```
 
 ## Sprint 8.2
@@ -504,7 +575,8 @@ Event Log File
 Buffered Logging
 Circular Buffer
 Pending Records Counter
-Automatic SD Recovery
+Automatic SD Flush
+Automatic SD Recovery Storage
 ```
 
 ## Sprint 9
@@ -563,6 +635,7 @@ flight-telemetry-data-logger
 │   └── main.cpp
 │
 ├── docs
+│   └── TestReport_Sprint8.md
 │
 └── README.md
 ```
@@ -571,7 +644,7 @@ flight-telemetry-data-logger
 
 # Privacy
 
-All coordinates, timestamps and telemetry samples shown in this repository are synthetic examples and do not represent real locations.
+All coordinates, timestamps and telemetry samples shown in this repository are synthetic examples or validation data and should not be considered representative of real locations.
 
 ---
 
