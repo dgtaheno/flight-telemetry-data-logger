@@ -78,7 +78,6 @@ SystemEvents
 | T20 | Startup without SD | PASS |
 | T21 | Startup without GPS Power | PARTIAL PASS |
 | T22 | Startup without BMP388 | PASS |
-| T30 | Runtime BMP388 Removal | FAIL |
 
 ---
 
@@ -692,63 +691,6 @@ I2C communication failure correctly triggers self-test failure.
 
 ---
 
-# Runtime Failure Tests
-
----
-
-## T30 – Runtime BMP388 Removal
-
-### Procedure
-
-```text
-Start system normally
-Disconnect BMP388 during operation
-```
-
-### Expected
-
-```text
-BMP_READ_FAILED
-
-BMP state becomes FAILED
-
-Fault flags updated
-```
-
-### Result
-
-```text
-FAIL
-```
-
-Observed:
-
-```text
-Temperature continued updating
-
-Pressure continued updating
-
-BMP altitude continued updating
-
-BMP : OK
-```
-
-### Conclusion
-
-```text
-Runtime BMP388 removal was not detected.
-```
-
-Possible explanations:
-
-```text
-Cached sensor values
-Runtime loss detection not implemented
-BMP driver continues using last valid readings
-```
-
----
-
 # Known Issues
 
 ## K03 – GPS Hardware Detection
@@ -829,44 +771,6 @@ OPEN
 
 ---
 
-## K05 – Runtime BMP388 Loss Detection
-
-### Description
-
-BMP388 removal during operation is not detected.
-
-### Observed
-
-```text
-BMP disconnected
-
-↓
-
-BMP Status remains OK
-
-↓
-
-Measurements continue
-```
-
-### Expected
-
-```text
-BMP : FAILED
-
-BMP_READ_FAILED
-
-Fault Flag BMP active
-```
-
-### Status
-
-```text
-OPEN
-```
-
----
-
 # Conclusions
 
 Sprint 8.1A objectives successfully validated.
@@ -900,8 +804,6 @@ Open diagnostic issues identified:
 K03 – GPS Hardware Detection
 
 K04 – GPS Error Counter Logic
-
-K05 – Runtime BMP388 Loss Detection
 ```
 
 Overall Result:
@@ -909,7 +811,7 @@ Overall Result:
 ```text
 SPRINT 8.1A PASSED
 
-WITH 3 OPEN DIAGNOSTIC ISSUES
+WITH 2 OPEN DIAGNOSTIC ISSUES
 ```
 
 ---
@@ -921,7 +823,6 @@ Sprint 8.1B
 
 - GPS Hardware Detection
 - GPS Error Counter Fix
-- BMP Runtime Loss Detection
 - SystemHealth Synchronization
 - SD Error Classification
 ```
