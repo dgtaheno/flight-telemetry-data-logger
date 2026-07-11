@@ -1,16 +1,17 @@
 # Flight Telemetry & Data Logger
 
-> Modular ESP32-based flight computer featuring GPS telemetry, barometric altitude measurement, health monitoring and timestamped flight logging.
+> Modular ESP32-based flight computer featuring GPS telemetry, barometric altitude measurement, runtime event detection, health monitoring and timestamped flight logging.
 
 ![Platform](https://img.shields.io/badge/Platform-ESP32-blue)
 ![GPS](https://img.shields.io/badge/GPS-NEO--M9N-green)
 ![Sensor](https://img.shields.io/badge/Sensor-BMP388-orange)
-![Status](https://img.shields.io/badge/Status-Sprint_8-success)
+![Status](https://img.shields.io/badge/Status-Sprint_8.1A-success)
 ![Health](https://img.shields.io/badge/System_Health-Enabled-success)
+![Events](https://img.shields.io/badge/Event_System-Enabled-success)
 
 ---
 
-## Overview
+# Overview
 
 Flight Telemetry & Data Logger is an ESP32-based flight computer designed for telemetry, data acquisition and future flight analysis.
 
@@ -21,15 +22,17 @@ The project combines:
 - Flight altitude estimation
 - Automatic CSV data logging
 - Power-On Self Test (POST)
+- Runtime Event System
 - System Health Monitoring
 - SD card diagnostics
+- SD recovery detection
 - Fault detection and reporting
 
 ---
 
-## Features
+# Features
 
-### GPS Navigation
+## GPS Navigation
 
 - GPS FIX detection
 - Latitude and longitude logging
@@ -41,7 +44,7 @@ The project combines:
 
 ---
 
-### Flight Altitude System
+## Flight Altitude System
 
 - GPS altitude reference capture
 - BMP388 relative altitude
@@ -51,7 +54,7 @@ The project combines:
 
 ---
 
-### Data Logging
+## Data Logging
 
 - Timestamped flight log creation
 - Automatic CSV generation
@@ -61,40 +64,44 @@ The project combines:
 
 ---
 
-### Reliability
+## Reliability
 
 - Power-On Self Test (POST)
 - Hardware validation at startup
-- Modular architecture
-- Fault flags
-- Error counters
-- SD health monitoring
-- Runtime diagnostics
+- Runtime Health Monitoring
+- Fault Flags
+- Error Counters
+- SD Diagnostics
+- SD State Machine
+- SD Removal Detection
+- SD Recovery Detection
+- Runtime Event System
+- Modular Architecture
 
 ---
 
-## Hardware
+# Hardware
 
-### Main Controller
+## Main Controller
 
 ```text
 ESP32 DevKitC V4
 ```
 
-### Sensors
+## Sensors
 
 ```text
 BMP388
 u-blox NEO-M9N
 ```
 
-### Storage
+## Storage
 
 ```text
 MicroSD Card
 ```
 
-### Power
+## Power
 
 ```text
 5V System Rail
@@ -103,7 +110,7 @@ MicroSD Card
 
 ---
 
-## System Architecture
+# System Architecture
 
 ```text
 ESP32
@@ -115,6 +122,8 @@ ESP32
 ├── SDLogger
 │
 ├── SystemHealth
+│
+├── SystemEvents
 │
 └── Flight Logger
 ```
@@ -169,7 +178,7 @@ SD failure active
 
 ## Error Counters
 
-The system records runtime failures:
+The system records runtime failures.
 
 ```text
 GPS Errors
@@ -183,6 +192,75 @@ Example:
 GPS Errors : 0
 BMP Errors : 0
 SD Errors  : 3
+```
+
+---
+
+# Runtime Event System
+
+The firmware includes a runtime event detection and notification system.
+
+Currently supported events:
+
+```text
+SYSTEM_START
+SYSTEM_READY
+
+SD_WRITE_FAILED
+SD_REMOVED
+SD_INSERTED
+SD_RECOVERED
+```
+
+The system detects state transitions and only generates events when a real change occurs.
+
+Example:
+
+```text
+[EVENT] SD_WRITE_FAILED
+
+[EVENT] SD_REMOVED
+
+...
+
+[EVENT] SD_INSERTED
+
+[EVENT] SD_RECOVERED
+```
+
+---
+
+## SD State Machine
+
+The storage subsystem maintains an internal runtime state machine.
+
+States:
+
+```text
+OK
+WRITE_FAILED
+REMOVED
+RECOVERED
+FULL
+```
+
+Example:
+
+```text
+SD Runtime State
+--------------------------------
+
+State              : REMOVED
+
+Consecutive Failures: 4
+
+Write Failures      : 4
+
+Removal Count       : 1
+
+Recovery Count      : 0
+
+--------------------------------
 ```
 
 ---
@@ -234,11 +312,11 @@ STORAGE_CRITICAL
 
 ---
 
-## Flight Altitude Model
+# Flight Altitude Model
 
 The system intentionally combines two altitude sources.
 
-### GPS
+## GPS
 
 Provides:
 
@@ -246,7 +324,7 @@ Provides:
 Absolute altitude above sea level
 ```
 
-### BMP388
+## BMP388
 
 Provides:
 
@@ -254,7 +332,7 @@ Provides:
 Relative altitude from takeoff point
 ```
 
-### Result
+## Result
 
 ```text
 Flight Altitude
@@ -277,9 +355,9 @@ Flight altitude  : 273.4 m
 
 ---
 
-## Flight Logging
+# Flight Logging
 
-### File Naming
+## File Naming
 
 When GPS FIX is available:
 
@@ -290,7 +368,7 @@ flight_YYYY-MM-DD_HH-MM-SS.csv
 Example:
 
 ```text
-flight_2026-07-11_08-59-29.csv
+flight_2026-07-11_17-56-43.csv
 ```
 
 Fallback:
@@ -301,7 +379,7 @@ flight_boot_001.csv
 
 ---
 
-### CSV Format
+## CSV Format
 
 ```csv
 timestamp_s,
@@ -318,9 +396,9 @@ speed_kmh
 
 ---
 
-## Current Status
+# Current Status
 
-### Completed
+## Completed
 
 ✅ ESP32 bring-up
 
@@ -352,19 +430,31 @@ speed_kmh
 
 ✅ SD Usage Monitoring
 
+✅ Runtime Event System
+
+✅ SD State Machine
+
+✅ SD Remove Detection
+
+✅ SD Recovery Detection
+
+✅ Recovery Statistics
+
 ---
 
-### In Progress
+## In Progress
+
+🔄 SystemHealth / SystemEvents synchronization
 
 🔄 Buffered Logging
 
-🔄 Event Logging
+🔄 Event Log File
 
 🔄 Automatic Recovery
 
 ---
 
-### Planned
+## Planned
 
 ⏳ LoRa telemetry
 
@@ -378,9 +468,9 @@ speed_kmh
 
 ---
 
-## Roadmap
+# Roadmap
 
-### Sprint 8
+## Sprint 8
 
 ```text
 System Health Monitoring
@@ -390,7 +480,25 @@ SD Diagnostics
 Storage Monitoring
 ```
 
-### Sprint 8.1
+## Sprint 8.1A
+
+```text
+SD State Machine
+SD Remove Detection
+SD Recovery Detection
+Runtime Event System
+Recovery Statistics
+```
+
+## Sprint 8.1B
+
+```text
+SystemHealth Synchronization
+SD Error Classification
+Event Log File
+```
+
+## Sprint 8.2
 
 ```text
 Buffered Logging
@@ -399,7 +507,7 @@ Pending Records Counter
 Automatic SD Recovery
 ```
 
-### Sprint 9
+## Sprint 9
 
 ```text
 LoRa Telemetry
@@ -407,7 +515,7 @@ Ground Station Integration
 Real-Time Data Transmission
 ```
 
-### Sprint 10
+## Sprint 10
 
 ```text
 INA219 Power Monitoring
@@ -415,7 +523,7 @@ Battery Telemetry
 Current Logging
 ```
 
-### Sprint 11
+## Sprint 11
 
 ```text
 Flight Analytics
@@ -425,7 +533,7 @@ Flight Duration
 Vertical Speed
 ```
 
-### Sprint 12
+## Sprint 12
 
 ```text
 FreeRTOS Architecture
@@ -436,7 +544,7 @@ Telemetry Queues
 
 ---
 
-## Project Structure
+# Project Structure
 
 ```text
 flight-telemetry-data-logger
@@ -448,7 +556,8 @@ flight-telemetry-data-logger
 │   ├── BMP388Sensor
 │   ├── GPSSensor
 │   ├── SDLogger
-│   └── SystemHealth
+│   ├── SystemHealth
+│   └── SystemEvents
 │
 ├── src
 │   └── main.cpp
@@ -460,12 +569,12 @@ flight-telemetry-data-logger
 
 ---
 
-## Privacy
+# Privacy
 
-All coordinates, timestamps and flight samples shown in this repository are synthetic examples and do not represent real locations.
+All coordinates, timestamps and telemetry samples shown in this repository are synthetic examples and do not represent real locations.
 
 ---
 
-## License
+# License
 
 MIT License
