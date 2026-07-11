@@ -6,6 +6,7 @@
 #include "SDLogger.h"
 #include "GPSSensor.h"
 #include "SystemHealth.h"
+#include "SystemEvents.h"
 
 // --------------------------------------------------
 // System Modules
@@ -15,6 +16,7 @@ BMP388Sensor bmp;
 SDLogger logger;
 GPSSensor gps;
 SystemHealth health;
+SystemEvents events;
 
 // --------------------------------------------------
 // Timing
@@ -63,6 +65,8 @@ void printHealthIfNeeded()
         lastHealthPrint = millis();
 
         health.printStatus();
+
+        events.printSdState();
     }
 
 #endif
@@ -76,7 +80,12 @@ void setup()
 {
     Serial.begin(115200);
 
+
     health.reset();
+
+    events.begin();
+
+    events.logEvent(EVENT_SYSTEM_START);
 
     Serial.println();
     Serial.println("================================");
@@ -304,6 +313,7 @@ void setup()
     Serial.println("System READY");
     Serial.println();
 
+    events.logEvent(EVENT_SYSTEM_READY);
     health.printStatus();
 }
 
@@ -440,19 +450,39 @@ void loop()
             flightAltitude,
             gpsSpeed);
 
+        // --------------------------------------------------
+        // SD State Machine
+        // --------------------------------------------------
+
+        events.updateSdState(
+            true,
+            writeOk,
+            logger.isStorageFull());
+
+        // --------------------------------------------------
+        // Health Reporting
+        // --------------------------------------------------
+
         if (writeOk)
         {
             health.reportSdOk();
         }
         else
         {
-            if (logger.isStorageFull())
+            if (events.isSdRemoved())
             {
-                health.reportSdFailure(SD_ERROR_CARD_FULL);
+                health.reportSdFailure(
+                    SD_ERROR_CARD_REMOVED);
+            }
+            else if (logger.isStorageFull())
+            {
+                health.reportSdFailure(
+                    SD_ERROR_CARD_FULL);
             }
             else
             {
-                health.reportSdFailure(SD_ERROR_WRITE_FAILED);
+                health.reportSdFailure(
+                    SD_ERROR_WRITE_FAILED);
             }
         }
 
