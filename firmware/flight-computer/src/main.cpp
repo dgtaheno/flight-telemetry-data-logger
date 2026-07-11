@@ -33,6 +33,13 @@ bool gpsReferenceCaptured = false;
 float gpsReferenceAltitude = 0.0f;
 
 // --------------------------------------------------
+// GPS Health State Tracking
+// --------------------------------------------------
+
+bool gpsWarningActive = false;
+GpsErrorCode activeGpsWarning = GPS_ERROR_NONE;
+
+// --------------------------------------------------
 // Helper: Update SD Health Information
 // --------------------------------------------------
 
@@ -41,15 +48,69 @@ void updateSdHealth()
     uint64_t totalBytes = logger.getTotalBytes();
     uint64_t usedBytes = logger.getUsedBytes();
 
+    if (events.isSdRemoved())
+    {
+        health.reportSdFailure(
+            SD_ERROR_CARD_REMOVED);
+
+        return;
+    }
+
     if (totalBytes == 0)
     {
-        health.reportSdFailure(SD_ERROR_NOT_INITIALIZED);
+        health.reportSdFailure(
+            SD_ERROR_NOT_INITIALIZED);
+
         return;
     }
 
     health.updateSdStorage(
         totalBytes,
         usedBytes);
+}
+
+// --------------------------------------------------
+// Helper: Report GPS Health Without Counter Spam
+// --------------------------------------------------
+
+void reportGpsHealth(
+    bool gpsDetected,
+    bool gpsFix)
+{
+    if (!gpsDetected)
+    {
+        if (!gpsWarningActive ||
+            activeGpsWarning != GPS_ERROR_NO_DATA)
+        {
+            health.reportGpsWarning(
+                GPS_ERROR_NO_DATA);
+
+            gpsWarningActive = true;
+            activeGpsWarning = GPS_ERROR_NO_DATA;
+        }
+
+        return;
+    }
+
+    if (!gpsFix)
+    {
+        if (!gpsWarningActive ||
+            activeGpsWarning != GPS_ERROR_NO_FIX)
+        {
+            health.reportGpsWarning(
+                GPS_ERROR_NO_FIX);
+
+            gpsWarningActive = true;
+            activeGpsWarning = GPS_ERROR_NO_FIX;
+        }
+
+        return;
+    }
+
+    health.reportGpsOk();
+
+    gpsWarningActive = false;
+    activeGpsWarning = GPS_ERROR_NONE;
 }
 
 // --------------------------------------------------
@@ -80,12 +141,12 @@ void setup()
 {
     Serial.begin(115200);
 
-
     health.reset();
 
     events.begin();
 
-    events.logEvent(EVENT_SYSTEM_START);
+    events.logEvent(
+        EVENT_SYSTEM_START);
 
     Serial.println();
     Serial.println("================================");
@@ -102,7 +163,8 @@ void setup()
 
     if (!bmp.begin())
     {
-        health.reportBmpFailure(BMP_ERROR_READ_FAILED);
+        health.reportBmpFailure(
+            BMP_ERROR_READ_FAILED);
 
         Serial.println("[FAIL] BMP388 sensor not detected");
 
@@ -116,7 +178,8 @@ void setup()
 
     if (!bmp.selfTest())
     {
-        health.reportBmpFailure(BMP_ERROR_INVALID_DATA);
+        health.reportBmpFailure(
+            BMP_ERROR_INVALID_DATA);
 
         Serial.println("[FAIL] BMP388 self-test failed");
 
@@ -138,7 +201,8 @@ void setup()
 
     if (!logger.begin())
     {
-        health.reportSdFailure(SD_ERROR_NOT_INITIALIZED);
+        health.reportSdFailure(
+            SD_ERROR_NOT_INITIALIZED);
 
         Serial.println("[FAIL] SD card not detected");
         Serial.println();
@@ -158,7 +222,8 @@ void setup()
 
     if (!logger.selfTest())
     {
-        health.reportSdFailure(SD_ERROR_SELFTEST_FAILED);
+        health.reportSdFailure(
+            SD_ERROR_SELFTEST_FAILED);
 
         Serial.println("[FAIL] SD card self-test failed");
 
@@ -185,21 +250,20 @@ void setup()
 
     if (!gps.selfTest())
     {
-        health.reportGpsWarning(GPS_ERROR_NO_DATA);
+        health.reportGpsWarning(
+            GPS_ERROR_NO_DATA);
+
+        gpsWarningActive = true;
+        activeGpsWarning = GPS_ERROR_NO_DATA;
 
         Serial.println("[WARN] GPS receiver not detected");
-
-        if (HALT_ON_GPS_FAIL)
-        {
-            while (1)
-            {
-                delay(1000);
-            }
-        }
     }
     else
     {
         health.reportGpsOk();
+
+        gpsWarningActive = false;
+        activeGpsWarning = GPS_ERROR_NONE;
 
         Serial.println("[PASS] GPS receiver");
     }
@@ -227,14 +291,9 @@ void setup()
         delay(50);
     }
 
-    if (gps.hasFix())
-    {
-        health.reportGpsOk();
-    }
-    else
-    {
-        health.reportGpsWarning(GPS_ERROR_NO_FIX);
-    }
+    reportGpsHealth(
+        gps.isDetected(),
+        gps.hasFix());
 
 #endif
 
@@ -252,7 +311,8 @@ void setup()
                 gps.getLocalDate(),
                 gps.getLocalTime()))
         {
-            health.reportSdFailure(SD_ERROR_FILE_CREATION_FAILED);
+            health.reportSdFailure(
+                SD_ERROR_FILE_CREATION_FAILED);
 
             Serial.println("[FAIL] Flight log creation failed");
 
@@ -271,7 +331,8 @@ void setup()
 
         if (!logger.createLogFile())
         {
-            health.reportSdFailure(SD_ERROR_FILE_CREATION_FAILED);
+            health.reportSdFailure(
+                SD_ERROR_FILE_CREATION_FAILED);
 
             Serial.println("[FAIL] Flight log creation failed");
 
@@ -288,7 +349,8 @@ void setup()
 
     if (!logger.createLogFile())
     {
-        health.reportSdFailure(SD_ERROR_FILE_CREATION_FAILED);
+        health.reportSdFailure(
+            SD_ERROR_FILE_CREATION_FAILED);
 
         Serial.println("[FAIL] Flight log creation failed");
 
@@ -313,7 +375,9 @@ void setup()
     Serial.println("System READY");
     Serial.println();
 
-    events.logEvent(EVENT_SYSTEM_READY);
+    events.logEvent(
+        EVENT_SYSTEM_READY);
+
     health.printStatus();
 }
 
@@ -337,7 +401,11 @@ void loop()
 
         if (!bmp.update())
         {
-            health.reportBmpFailure(BMP_ERROR_READ_FAILED);
+            health.reportBmpFailure(
+                BMP_ERROR_READ_FAILED);
+
+            events.updateBmpState(
+                false);
 
             Serial.println("[WARN] BMP388 read error");
 
@@ -347,6 +415,9 @@ void loop()
         }
 
         health.reportBmpOk();
+
+        events.updateBmpState(
+            true);
 
         float temperature = bmp.getTemperature();
         float pressure = bmp.getPressure();
@@ -358,23 +429,16 @@ void loop()
         // GPS Update
         // --------------------------------------------------
 
+        bool gpsDetected = gps.isDetected();
         bool gpsFix = gps.hasFix();
 
-        if (gps.isDetected())
-        {
-            if (gpsFix)
-            {
-                health.reportGpsOk();
-            }
-            else
-            {
-                health.reportGpsWarning(GPS_ERROR_NO_FIX);
-            }
-        }
-        else
-        {
-            health.reportGpsWarning(GPS_ERROR_NO_DATA);
-        }
+        events.updateGpsState(
+            gpsDetected,
+            gpsFix);
+
+        reportGpsHealth(
+            gpsDetected,
+            gpsFix);
 
         double latitude = gps.getLatitude();
         double longitude = gps.getLongitude();
@@ -513,7 +577,7 @@ void loop()
         Serial.println();
 
         Serial.print("GPS Detected: ");
-        Serial.println(gps.isDetected() ? "YES" : "NO");
+        Serial.println(gpsDetected ? "YES" : "NO");
 
         Serial.print("GPS Fix     : ");
         Serial.println(gpsFix ? "YES" : "NO");

@@ -23,7 +23,7 @@ Date:
 
 # Objective
 
-Validate the Health Monitoring subsystem, SD diagnostics, Runtime Event System and SD State Machine under real hardware conditions.
+Validate the Health Monitoring subsystem, SD diagnostics, Runtime Event System, SD State Machine and configuration parameters under real hardware conditions.
 
 ---
 
@@ -41,10 +41,10 @@ MicroSD Card
 ## Firmware
 
 ```text
-Sprint 8.1A
+Sprint 8.1B
 ```
 
-Validated modules:
+Validated Modules:
 
 ```text
 BMP388Sensor
@@ -76,8 +76,9 @@ SystemEvents
 | T14 | Recovery Statistics | PASS |
 | T15 | GPS Speed Deadband | PASS |
 | T20 | Startup without SD | PASS |
-| T21 | Startup without GPS Power | PARTIAL PASS |
+| T21 | Startup without GPS Power | PASS |
 | T22 | Startup without BMP388 | PASS |
+| T50 | CSV Recovery Validation | PASS |
 
 ---
 
@@ -232,7 +233,7 @@ flight_YYYY-MM-DD_HH-MM-SS.csv
 Example:
 
 ```text
-flight_2026-07-11_18-00-56.csv
+flight_2026-07-11_23-01-48.csv
 ```
 
 ---
@@ -608,46 +609,32 @@ GPS Detected = NO
 ### Result
 
 ```text
-PARTIAL PASS
+PASS
 ```
 
 Observed:
 
 ```text
-[PASS] GPS receiver
+[WARN] GPS receiver not detected
 
 [WARN] GPS fix unavailable
 
-GPS : WARNING
-GPS Detected : YES
-GPS Fix : NO
+GPS Detected : NO
+
+GPS Fix      : NO
 
 Flight log created
 
 Fallback filename used
 ```
 
-### Positive Result
+### Conclusion
 
 ```text
-System remains operational.
+GPS absence correctly detected.
 
-BMP = OK
-SD  = OK
-```
-
-### Issue Found
-
-```text
-GPS physically absent
-
-↓
-
-GPS receiver PASS
-
-↓
-
-GPS Detected = YES
+System remains operational
+using degraded mode.
 ```
 
 ---
@@ -686,94 +673,248 @@ Observed:
 ```text
 BMP388 absence correctly detected.
 
-I2C communication failure correctly triggers self-test failure.
+I2C communication loss correctly triggers self-test failure.
+```
+
+---
+
+# Recovery Validation Tests
+
+---
+
+## T50 – CSV Recovery Validation
+
+### Procedure
+
+```text
+Create log
+
+Remove SD card
+
+Wait approximately 40 seconds
+
+Reinsert SD card
+
+Continue logging
+
+Open CSV file
+```
+
+### Expected
+
+```text
+Logging resumes after SD recovery.
+```
+
+### Result
+
+```text
+PASS
+```
+
+### Observed
+
+```text
+Timestamp sequence:
+
+24
+
+...
+
+65
+
+...
+
+106
+```
+
+### Conclusion
+
+```text
+CSV logging resumes correctly after SD recovery.
+
+Records generated while SD storage
+was unavailable are lost.
+
+Buffered logging is required
+to prevent data loss.
+```
+
+---
+
+# Configuration Validation
+
+The following configuration parameters defined in Config.h have been validated using real hardware tests.
+
+---
+
+## C01 – GPS Detection Timeout
+
+### Parameter
+
+```text
+GPS_DETECTION_TIMEOUT_MS
+```
+
+### Validation
+
+```text
+Startup with GPS disconnected.
+```
+
+### Result
+
+```text
+PASS
+```
+
+Observed:
+
+```text
+[WARN] GPS receiver not detected
+
+GPS Detected : NO
+
+GPS Fix      : NO
+```
+
+---
+
+## C02 – GPS Stale Data Timeout
+
+### Parameter
+
+```text
+GPS_STALE_DATA_TIMEOUT_MS
+```
+
+### Validation
+
+```text
+Disconnect GPS during operation.
+```
+
+### Result
+
+```text
+PASS
+```
+
+Observed:
+
+```text
+GPS Detected : NO
+
+GPS Fix      : NO
+
+GPS : WARNING
+
+Error : NO_DATA
+```
+
+---
+
+## C03 – GPS Fix Timeout
+
+### Parameter
+
+```text
+GPS_FIX_TIMEOUT_SECONDS
+```
+
+### Validation
+
+```text
+Startup without GPS availability.
+```
+
+### Result
+
+```text
+PASS
+```
+
+Observed:
+
+```text
+[WARN] GPS fix unavailable
+
+[INFO] Using fallback filename
+
+flight_boot_014.csv
+```
+
+---
+
+## C04 – SD Removal Threshold
+
+### Parameter
+
+```text
+SD_REMOVAL_FAILURE_THRESHOLD
+```
+
+### Validation
+
+```text
+Remove SD card during operation.
+```
+
+### Result
+
+```text
+PASS
+```
+
+Observed:
+
+```text
+[EVENT] SD_WRITE_FAILED
+
+[EVENT] SD_REMOVED
+```
+
+---
+
+## C05 – GPS Speed Deadband
+
+### Parameter
+
+```text
+GPS_SPEED_DEADBAND_KMH
+```
+
+### Validation
+
+```text
+System stationary.
+```
+
+### Result
+
+```text
+PASS
+```
+
+Observed:
+
+```text
+Speed : 0.00 km/h
 ```
 
 ---
 
 # Known Issues
 
-## K03 – GPS Hardware Detection
-
-### Description
-
-GPS hardware absence is not differentiated from GPS present without satellite lock.
-
-### Observed
-
 ```text
-GPS powered OFF
-
-↓
-
-GPS receiver PASS
-
-↓
-
-GPS Detected = YES
-
-GPS Fix = NO
-```
-
-### Expected
-
-```text
-GPS receiver WARNING/FAIL
-
-GPS Detected = NO
-```
-
-### Status
-
-```text
-OPEN
-```
-
----
-
-## K04 – GPS Error Counter Logic
-
-### Description
-
-GPS error counter continuously increments while GPS remains in NO_FIX state.
-
-### Observed
-
-```text
-GPS Count : 186
-
-GPS Count : 197
-
-GPS Count : 207
-```
-
-without any state transition.
-
-### Expected
-
-Counter should increment only on:
-
-```text
-FIX
-↓
-NO_FIX
-```
-
-transition.
-
-Not during every execution cycle.
-
-### Status
-
-```text
-OPEN
+No known open issues.
 ```
 
 ---
 
 # Conclusions
 
-Sprint 8.1A objectives successfully validated.
+Sprint 8.0 objectives successfully validated.
 
 Validated in real hardware:
 
@@ -788,30 +929,31 @@ SD Write Failure Detection
 SD Removal Detection
 SD Recovery Detection
 Recovery Statistics
+GPS Runtime Loss Detection
+GPS Startup Detection
+CSV Recovery Validation
 ```
 
-Additional startup validation completed:
+Configuration validation completed:
 
 ```text
-Startup without SD
-Startup without GPS
-Startup without BMP388
-```
-
-Open diagnostic issues identified:
-
-```text
-K03 – GPS Hardware Detection
-
-K04 – GPS Error Counter Logic
+GPS Detection Timeout
+GPS Stale Data Timeout
+GPS Fix Timeout
+SD Removal Threshold
+GPS Speed Deadband
 ```
 
 Overall Result:
 
 ```text
+SPRINT 8.0 PASSED
+
 SPRINT 8.1A PASSED
 
-WITH 2 OPEN DIAGNOSTIC ISSUES
+SPRINT 8.1B PASSED
+
+NO OPEN ISSUES
 ```
 
 ---
@@ -819,20 +961,32 @@ WITH 2 OPEN DIAGNOSTIC ISSUES
 # Next Sprint
 
 ```text
-Sprint 8.1B
+Sprint 8.2
 
-- GPS Hardware Detection
-- GPS Error Counter Fix
-- SystemHealth Synchronization
-- SD Error Classification
+- Buffered Logging
+- Circular Buffer
+- Pending Records Counter
+- Automatic SD Flush
+- Automatic SD Recovery Storage
 ```
 
 Future:
 
 ```text
-Sprint 8.2
+Sprint 9
 
-- Buffered Logging
-- Circular Buffer
-- Automatic SD Recovery
+- LoRa Telemetry
+- Ground Station Integration
+
+Sprint 10
+
+- INA219 Power Monitoring
+
+Sprint 11
+
+- Flight Analytics
+
+Sprint 12
+
+- FreeRTOS Architecture
 ```
