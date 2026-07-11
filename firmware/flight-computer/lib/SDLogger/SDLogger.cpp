@@ -7,14 +7,13 @@
 #include <SD.h>
 #include <string.h>
 
+// =====================================================
+// Initialization
+// =====================================================
+
 bool SDLogger::begin()
 {
     return SD.begin(SD_CS_PIN);
-}
-
-const char* SDLogger::getLogFileName()
-{
-    return logFileName;
 }
 
 bool SDLogger::selfTest()
@@ -44,6 +43,10 @@ bool SDLogger::selfTest()
 
     return true;
 }
+
+// =====================================================
+// Log File Creation
+// =====================================================
 
 bool SDLogger::createLogFile()
 {
@@ -173,6 +176,15 @@ bool SDLogger::createLogFile(
     return true;
 }
 
+const char* SDLogger::getLogFileName()
+{
+    return logFileName;
+}
+
+// =====================================================
+// Telemetry Logging
+// =====================================================
+
 bool SDLogger::writeData(
     unsigned long timestamp,
     float temperature,
@@ -185,6 +197,16 @@ bool SDLogger::writeData(
     float flightAltitude,
     float speed)
 {
+    if (logFileName[0] == '\0')
+    {
+        return false;
+    }
+
+    if (isStorageFull())
+    {
+        return false;
+    }
+
     File file = SD.open(logFileName, FILE_APPEND);
 
     if (!file)
@@ -221,7 +243,78 @@ bool SDLogger::writeData(
 
     file.println(speed, 2);
 
+    bool writeOk = !file.getWriteError();
+
     file.close();
 
-    return true;
+    return writeOk;
+}
+
+// =====================================================
+// Storage Diagnostics
+// =====================================================
+
+uint64_t SDLogger::getTotalBytes()
+{
+    return SD.totalBytes();
+}
+
+uint64_t SDLogger::getUsedBytes()
+{
+    return SD.usedBytes();
+}
+
+uint64_t SDLogger::getFreeBytes()
+{
+    uint64_t totalBytes = getTotalBytes();
+    uint64_t usedBytes = getUsedBytes();
+
+    if (totalBytes > usedBytes)
+    {
+        return totalBytes - usedBytes;
+    }
+
+    return 0;
+}
+
+uint8_t SDLogger::getUsagePercent()
+{
+    uint64_t totalBytes = getTotalBytes();
+
+    if (totalBytes == 0)
+    {
+        return 0;
+    }
+
+    uint64_t usedBytes = getUsedBytes();
+
+    return (uint8_t)((usedBytes * 100ULL) / totalBytes);
+}
+
+bool SDLogger::isStorageAvailable()
+{
+    return getTotalBytes() > 0;
+}
+
+bool SDLogger::isStorageWarning()
+{
+    uint8_t usagePercent = getUsagePercent();
+
+    return usagePercent >= SD_USAGE_WARNING_PERCENT &&
+           usagePercent < SD_USAGE_CRITICAL_PERCENT;
+}
+
+bool SDLogger::isStorageCritical()
+{
+    uint8_t usagePercent = getUsagePercent();
+
+    return usagePercent >= SD_USAGE_CRITICAL_PERCENT &&
+           usagePercent < SD_USAGE_FULL_PERCENT;
+}
+
+bool SDLogger::isStorageFull()
+{
+    uint8_t usagePercent = getUsagePercent();
+
+    return usagePercent >= SD_USAGE_FULL_PERCENT;
 }

@@ -8,9 +8,17 @@ private:
     char logFileName[64];
 
 public:
+    // =====================================================
+    // Initialization
+    // =====================================================
+
     bool begin();
 
     bool selfTest();
+
+    // =====================================================
+    // Log File Creation
+    // =====================================================
 
     // Creates a fallback boot-based log file:
     // /flight_boot_001.csv
@@ -24,6 +32,10 @@ public:
 
     const char* getLogFileName();
 
+    // =====================================================
+    // Telemetry Logging
+    // =====================================================
+
     bool writeData(
         unsigned long timestamp,
         float temperature,
@@ -35,4 +47,24 @@ public:
         float gpsAltitude,
         float flightAltitude,
         float speed);
+
+    // =====================================================
+    // Storage Diagnostics
+    // =====================================================
+
+    uint64_t getTotalBytes();
+
+    uint64_t getUsedBytes();
+
+    uint64_t getFreeBytes();
+
+    uint8_t getUsagePercent();
+
+    bool isStorageAvailable();
+
+    bool isStorageWarning();
+
+    bool isStorageCritical();
+
+    bool isStorageFull();
 };

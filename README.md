@@ -1,12 +1,29 @@
 # Flight Telemetry & Data Logger
 
-> Modular ESP32-based flight computer featuring GPS telemetry,
-> barometric altitude measurement and timestamped flight logging.
+> Modular ESP32-based flight computer featuring GPS telemetry, barometric altitude measurement, health monitoring and timestamped flight logging.
 
-![Platform](https://img.shields.io/badge/platform-ESP32-blue)
+![Platform](https://img.shields.io/badge/Platform-ESP32-blue)
 ![GPS](https://img.shields.io/badge/GPS-NEO--M9N-green)
 ![Sensor](https://img.shields.io/badge/Sensor-BMP388-orange)
-![Version](https://img.shields.io/badge/version-v0.7.0-success)
+![Status](https://img.shields.io/badge/Status-Sprint_8-success)
+![Health](https://img.shields.io/badge/System_Health-Enabled-success)
+
+---
+
+## Overview
+
+Flight Telemetry & Data Logger is an ESP32-based flight computer designed for telemetry, data acquisition and future flight analysis.
+
+The project combines:
+
+- GPS navigation and positioning
+- Barometric altitude measurement
+- Flight altitude estimation
+- Automatic CSV data logging
+- Power-On Self Test (POST)
+- System Health Monitoring
+- SD card diagnostics
+- Fault detection and reporting
 
 ---
 
@@ -20,6 +37,9 @@
 - Ground speed measurement
 - UTC time acquisition
 - Automatic local time conversion
+- GPS timestamped log filenames
+
+---
 
 ### Flight Altitude System
 
@@ -29,20 +49,27 @@
 - Stable altitude reference
 - GPS speed deadband filtering
 
+---
+
 ### Data Logging
 
 - Timestamped flight log creation
 - Automatic CSV generation
 - FAT32 support
-- Power-loss-safe logging
 - Session based flight recording
+- Automatic fallback filename generation
+
+---
 
 ### Reliability
 
 - Power-On Self Test (POST)
 - Hardware validation at startup
-- Automatic fallback log generation
 - Modular architecture
+- Fault flags
+- Error counters
+- SD health monitoring
+- Runtime diagnostics
 
 ---
 
@@ -81,13 +108,128 @@ MicroSD Card
 ```text
 ESP32
 │
-├── BMP388
+├── BMP388Sensor
 │
-├── NEO-M9N GPS
+├── GPSSensor
 │
-├── microSD
+├── SDLogger
+│
+├── SystemHealth
 │
 └── Flight Logger
+```
+
+---
+
+# System Health Monitoring
+
+The system continuously monitors the operational status of all critical modules.
+
+Currently monitored:
+
+```text
+GPS Receiver
+BMP388 Sensor
+MicroSD Storage
+```
+
+---
+
+## Health States
+
+Each monitored subsystem can report:
+
+```text
+OK
+WARNING
+FAILED
+```
+
+---
+
+## Fault Flags
+
+The system maintains runtime fault flags.
+
+```text
+GPS = 0x01
+BMP = 0x02
+SD  = 0x04
+```
+
+Example:
+
+```text
+Fault Flags = 0x04
+
+SD failure active
+```
+
+---
+
+## Error Counters
+
+The system records runtime failures:
+
+```text
+GPS Errors
+BMP Errors
+SD Errors
+```
+
+Example:
+
+```text
+GPS Errors : 0
+BMP Errors : 0
+SD Errors  : 3
+```
+
+---
+
+## SD Diagnostics
+
+The storage subsystem continuously monitors:
+
+```text
+Total Capacity
+Used Capacity
+Free Capacity
+Usage Percentage
+```
+
+Example:
+
+```text
+SD Usage : 42 %
+
+SD Total : 59992 MB
+SD Used  : 25196 MB
+SD Free  : 34796 MB
+```
+
+---
+
+### Storage Warning Levels
+
+```text
+WARNING  : 80 %
+CRITICAL : 95 %
+FULL     : 99 %
+```
+
+Possible SD fault codes:
+
+```text
+NOT_INITIALIZED
+CARD_REMOVED
+CARD_FULL
+OPEN_FAILED
+WRITE_FAILED
+FILE_CREATION_FAILED
+SELFTEST_FAILED
+STORAGE_WARNING
+STORAGE_CRITICAL
 ```
 
 ---
@@ -126,11 +268,11 @@ BMP388 Relative Altitude
 Example:
 
 ```text
-Takeoff altitude     : 123.4 m
+Takeoff altitude : 123.4 m
 
-Climb                : +150.0 m
+Climb            : +150.0 m
 
-Flight altitude      : 273.4 m
+Flight altitude  : 273.4 m
 ```
 
 ---
@@ -148,7 +290,7 @@ flight_YYYY-MM-DD_HH-MM-SS.csv
 Example:
 
 ```text
-flight_2026-01-01_13-34-56.csv
+flight_2026-07-11_08-59-29.csv
 ```
 
 Fallback:
@@ -174,69 +316,123 @@ flight_altitude_m,
 speed_kmh
 ```
 
-Example data (synthetic):
-
-```csv
-1,23.50,1012.10,0.05,1,50.123456,8.654321,123.4,123.5,0.00
-2,23.51,1012.08,0.07,1,50.123460,8.654325,123.3,123.5,0.00
-3,23.50,1012.09,0.11,1,50.123470,8.654330,123.6,123.7,0.00
-```
-
 ---
 
 ## Current Status
 
 ### Completed
 
-- ✅ ESP32 bring-up
-- ✅ BMP388 integration
-- ✅ GPS integration
-- ✅ TinyGPSPlus integration
-- ✅ SD logging
-- ✅ Power-On Self Test
-- ✅ GPS timestamped filenames
-- ✅ Flight altitude calculation
-- ✅ GPS speed filtering
+✅ ESP32 bring-up
+
+✅ BMP388 integration
+
+✅ GPS integration
+
+✅ TinyGPSPlus integration
+
+✅ SD logging
+
+✅ Power-On Self Test
+
+✅ GPS timestamped filenames
+
+✅ Flight altitude calculation
+
+✅ GPS speed deadband filtering
+
+✅ System Health Monitoring
+
+✅ Fault Flags
+
+✅ Error Counters
+
+✅ SD Diagnostics
+
+✅ SD Capacity Monitoring
+
+✅ SD Usage Monitoring
+
+---
 
 ### In Progress
 
-- 🔄 Documentation improvements
+🔄 Buffered Logging
+
+🔄 Event Logging
+
+🔄 Automatic Recovery
+
+---
 
 ### Planned
 
-- ⏳ LoRa telemetry
-- ⏳ INA219 power monitoring
-- ⏳ Flight statistics
-- ⏳ Vertical speed calculation
+⏳ LoRa telemetry
+
+⏳ INA219 power monitoring
+
+⏳ Ground station dashboard
+
+⏳ Flight analytics
+
+⏳ FreeRTOS architecture
 
 ---
 
 ## Roadmap
 
-### v0.8.0
+### Sprint 8
 
+```text
+System Health Monitoring
+Fault Flags
+Error Counters
+SD Diagnostics
+Storage Monitoring
+```
+
+### Sprint 8.1
+
+```text
+Buffered Logging
+Circular Buffer
+Pending Records Counter
+Automatic SD Recovery
+```
+
+### Sprint 9
+
+```text
 LoRa Telemetry
+Ground Station Integration
+Real-Time Data Transmission
+```
 
-- Real-time telemetry transmission
-- Ground station integration
+### Sprint 10
 
-### v0.9.0
+```text
+INA219 Power Monitoring
+Battery Telemetry
+Current Logging
+```
 
-Power Monitoring
+### Sprint 11
 
-- INA219 integration
-- Battery voltage logging
-- Current monitoring
-
-### v1.0.0
-
+```text
 Flight Analytics
+Maximum Altitude
+Maximum Speed
+Flight Duration
+Vertical Speed
+```
 
-- Maximum altitude
-- Maximum speed
-- Flight duration
-- Vertical speed
-- Flight summary generation
+### Sprint 12
+
+```text
+FreeRTOS Architecture
+Dual Core Utilization
+Task Separation
+Telemetry Queues
+```
 
 ---
 
@@ -251,7 +447,8 @@ flight-telemetry-data-logger
 ├── lib
 │   ├── BMP388Sensor
 │   ├── GPSSensor
-│   └── SDLogger
+│   ├── SDLogger
+│   └── SystemHealth
 │
 ├── src
 │   └── main.cpp

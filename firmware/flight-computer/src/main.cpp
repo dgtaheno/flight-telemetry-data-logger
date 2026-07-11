@@ -5,6 +5,7 @@
 #include "BMP388Sensor.h"
 #include "SDLogger.h"
 #include "GPSSensor.h"
+#include "SystemHealth.h"
 
 // --------------------------------------------------
 // System Modules
@@ -13,12 +14,14 @@
 BMP388Sensor bmp;
 SDLogger logger;
 GPSSensor gps;
+SystemHealth health;
 
 // --------------------------------------------------
 // Timing
 // --------------------------------------------------
 
 unsigned long lastLog = 0;
+unsigned long lastHealthPrint = 0;
 
 // --------------------------------------------------
 // GPS Altitude Reference
@@ -27,9 +30,53 @@ unsigned long lastLog = 0;
 bool gpsReferenceCaptured = false;
 float gpsReferenceAltitude = 0.0f;
 
+// --------------------------------------------------
+// Helper: Update SD Health Information
+// --------------------------------------------------
+
+void updateSdHealth()
+{
+    uint64_t totalBytes = logger.getTotalBytes();
+    uint64_t usedBytes = logger.getUsedBytes();
+
+    if (totalBytes == 0)
+    {
+        health.reportSdFailure(SD_ERROR_NOT_INITIALIZED);
+        return;
+    }
+
+    health.updateSdStorage(
+        totalBytes,
+        usedBytes);
+}
+
+// --------------------------------------------------
+// Helper: Print System Health Periodically
+// --------------------------------------------------
+
+void printHealthIfNeeded()
+{
+#if PRINT_HEALTH_TO_SERIAL
+
+    if (millis() - lastHealthPrint >= HEALTH_PRINT_INTERVAL_MS)
+    {
+        lastHealthPrint = millis();
+
+        health.printStatus();
+    }
+
+#endif
+}
+
+// --------------------------------------------------
+// Setup
+// --------------------------------------------------
+
 void setup()
 {
     Serial.begin(115200);
+
+    health.reset();
 
     Serial.println();
     Serial.println("================================");
@@ -46,23 +93,33 @@ void setup()
 
     if (!bmp.begin())
     {
+        health.reportBmpFailure(BMP_ERROR_READ_FAILED);
+
         Serial.println("[FAIL] BMP388 sensor not detected");
 
+#if HALT_ON_BMP388_FAIL
         while (1)
         {
             delay(1000);
         }
+#endif
     }
 
     if (!bmp.selfTest())
     {
+        health.reportBmpFailure(BMP_ERROR_INVALID_DATA);
+
         Serial.println("[FAIL] BMP388 self-test failed");
 
+#if HALT_ON_BMP388_FAIL
         while (1)
         {
             delay(1000);
         }
+#endif
     }
+
+    health.reportBmpOk();
 
     Serial.println("[PASS] BMP388 sensor");
 
@@ -72,6 +129,8 @@ void setup()
 
     if (!logger.begin())
     {
+        health.reportSdFailure(SD_ERROR_NOT_INITIALIZED);
+
         Serial.println("[FAIL] SD card not detected");
         Serial.println();
         Serial.println("Please check:");
@@ -80,21 +139,30 @@ void setup()
         Serial.println(" - SD module power supply (5V)");
         Serial.println(" - SD card format (FAT32)");
 
+#if HALT_ON_SD_FAIL
         while (1)
         {
             delay(1000);
         }
+#endif
     }
 
     if (!logger.selfTest())
     {
+        health.reportSdFailure(SD_ERROR_SELFTEST_FAILED);
+
         Serial.println("[FAIL] SD card self-test failed");
 
+#if HALT_ON_SD_FAIL
         while (1)
         {
             delay(1000);
         }
+#endif
     }
+
+    health.reportSdOk();
+    updateSdHealth();
 
     Serial.println("[PASS] SD card");
 
@@ -108,6 +176,8 @@ void setup()
 
     if (!gps.selfTest())
     {
+        health.reportGpsWarning(GPS_ERROR_NO_DATA);
+
         Serial.println("[WARN] GPS receiver not detected");
 
         if (HALT_ON_GPS_FAIL)
@@ -120,6 +190,8 @@ void setup()
     }
     else
     {
+        health.reportGpsOk();
+
         Serial.println("[PASS] GPS receiver");
     }
 
@@ -146,6 +218,15 @@ void setup()
         delay(50);
     }
 
+    if (gps.hasFix())
+    {
+        health.reportGpsOk();
+    }
+    else
+    {
+        health.reportGpsWarning(GPS_ERROR_NO_FIX);
+    }
+
 #endif
 
     // --------------------------------------------------
@@ -162,12 +243,16 @@ void setup()
                 gps.getLocalDate(),
                 gps.getLocalTime()))
         {
+            health.reportSdFailure(SD_ERROR_FILE_CREATION_FAILED);
+
             Serial.println("[FAIL] Flight log creation failed");
 
+#if HALT_ON_SD_FAIL
             while (1)
             {
                 delay(1000);
             }
+#endif
         }
     }
     else
@@ -177,12 +262,16 @@ void setup()
 
         if (!logger.createLogFile())
         {
+            health.reportSdFailure(SD_ERROR_FILE_CREATION_FAILED);
+
             Serial.println("[FAIL] Flight log creation failed");
 
+#if HALT_ON_SD_FAIL
             while (1)
             {
                 delay(1000);
             }
+#endif
         }
     }
 
@@ -190,15 +279,22 @@ void setup()
 
     if (!logger.createLogFile())
     {
+        health.reportSdFailure(SD_ERROR_FILE_CREATION_FAILED);
+
         Serial.println("[FAIL] Flight log creation failed");
 
+#if HALT_ON_SD_FAIL
         while (1)
         {
             delay(1000);
         }
+#endif
     }
 
 #endif
+
+    health.reportSdOk();
+    updateSdHealth();
 
     Serial.print("[PASS] Flight log: ");
     Serial.println(logger.getLogFileName());
@@ -207,7 +303,13 @@ void setup()
     Serial.println("All systems passed");
     Serial.println("System READY");
     Serial.println();
+
+    health.printStatus();
 }
+
+// --------------------------------------------------
+// Main Loop
+// --------------------------------------------------
 
 void loop()
 {
@@ -219,11 +321,22 @@ void loop()
     {
         lastLog = millis();
 
+        // --------------------------------------------------
+        // BMP388 Update
+        // --------------------------------------------------
+
         if (!bmp.update())
         {
+            health.reportBmpFailure(BMP_ERROR_READ_FAILED);
+
             Serial.println("[WARN] BMP388 read error");
+
+            printHealthIfNeeded();
+
             return;
         }
+
+        health.reportBmpOk();
 
         float temperature = bmp.getTemperature();
         float pressure = bmp.getPressure();
@@ -231,7 +344,27 @@ void loop()
 
 #if GPS_ENABLED
 
+        // --------------------------------------------------
+        // GPS Update
+        // --------------------------------------------------
+
         bool gpsFix = gps.hasFix();
+
+        if (gps.isDetected())
+        {
+            if (gpsFix)
+            {
+                health.reportGpsOk();
+            }
+            else
+            {
+                health.reportGpsWarning(GPS_ERROR_NO_FIX);
+            }
+        }
+        else
+        {
+            health.reportGpsWarning(GPS_ERROR_NO_DATA);
+        }
 
         double latitude = gps.getLatitude();
         double longitude = gps.getLongitude();
@@ -295,7 +428,7 @@ void loop()
         // Store Telemetry
         // --------------------------------------------------
 
-        logger.writeData(
+        bool writeOk = logger.writeData(
             millis() / 1000,
             temperature,
             pressure,
@@ -306,6 +439,26 @@ void loop()
             gpsAltitude,
             flightAltitude,
             gpsSpeed);
+
+        if (writeOk)
+        {
+            health.reportSdOk();
+        }
+        else
+        {
+            if (logger.isStorageFull())
+            {
+                health.reportSdFailure(SD_ERROR_CARD_FULL);
+            }
+            else
+            {
+                health.reportSdFailure(SD_ERROR_WRITE_FAILED);
+            }
+        }
+
+        updateSdHealth();
+
+#if PRINT_TELEMETRY_TO_SERIAL
 
         // --------------------------------------------------
         // Console Output
@@ -369,5 +522,9 @@ void loop()
 
         Serial.println("--------------------------------");
         Serial.println();
+
+#endif
+
+        printHealthIfNeeded();
     }
 }
