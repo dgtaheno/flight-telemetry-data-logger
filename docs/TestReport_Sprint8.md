@@ -72,8 +72,13 @@ SystemEvents
 | T10 | SD Write Failure Detection | PASS |
 | T11 | SD Removal Detection | PASS |
 | T12 | SD Recovery Detection | PASS |
-| T13 | SD State Recovery | PASS |
-| T14 | GPS Speed Deadband | PASS |
+| T13 | SD State Machine | PASS |
+| T14 | Recovery Statistics | PASS |
+| T15 | GPS Speed Deadband | PASS |
+| T20 | Startup without SD | PASS |
+| T21 | Startup without GPS Power | PARTIAL PASS |
+| T22 | Startup without BMP388 | PASS |
+| T30 | Runtime BMP388 Removal | FAIL |
 
 ---
 
@@ -433,6 +438,7 @@ Observed:
 
 ```text
 [EVENT] SD_INSERTED
+
 [EVENT] SD_RECOVERED
 ```
 
@@ -480,3 +486,452 @@ State : OK
 
 ---
 
+## T14 – Recovery Statistics
+
+### Procedure
+
+```text
+Perform SD removal and reinsertion
+```
+
+### Expected
+
+```text
+Counters updated
+```
+
+### Result
+
+```text
+PASS
+```
+
+Observed:
+
+```text
+Removal Count  : 1
+Recovery Count : 1
+Write Failures : 6
+```
+
+---
+
+## T15 – GPS Speed Deadband
+
+### Procedure
+
+```text
+Leave system stationary
+```
+
+### Expected
+
+```text
+Speed = 0.00 km/h
+```
+
+### Result
+
+```text
+PASS
+```
+
+Observed:
+
+```text
+Speed : 0.00 km/h
+```
+
+---
+
+# Startup Validation Tests
+
+---
+
+## T20 – Startup without SD
+
+### Procedure
+
+```text
+Remove SD card
+Power cycle system
+```
+
+### Expected
+
+```text
+SD card not detected
+```
+
+### Result
+
+```text
+PASS
+```
+
+Observed:
+
+```text
+[FAIL] SD card not detected
+
+Please check:
+ - microSD card is inserted
+ - SD module wiring
+ - SD module power supply (5V)
+ - SD card format (FAT32)
+```
+
+### Conclusion
+
+```text
+POST correctly detects SD absence.
+```
+
+---
+
+## T21 – Startup without GPS Power
+
+### Procedure
+
+```text
+Disconnect GPS VCC
+Power cycle system
+```
+
+### Expected
+
+```text
+GPS receiver not detected
+
+GPS Detected = NO
+```
+
+### Result
+
+```text
+PARTIAL PASS
+```
+
+Observed:
+
+```text
+[PASS] GPS receiver
+
+[WARN] GPS fix unavailable
+
+GPS : WARNING
+GPS Detected : YES
+GPS Fix : NO
+
+Flight log created
+
+Fallback filename used
+```
+
+### Positive Result
+
+```text
+System remains operational.
+
+BMP = OK
+SD  = OK
+```
+
+### Issue Found
+
+```text
+GPS physically absent
+
+↓
+
+GPS receiver PASS
+
+↓
+
+GPS Detected = YES
+```
+
+---
+
+## T22 – Startup without BMP388
+
+### Procedure
+
+```text
+Disconnect BMP388
+Power cycle system
+```
+
+### Expected
+
+```text
+BMP388 self-test fails
+```
+
+### Result
+
+```text
+PASS
+```
+
+Observed:
+
+```text
+[Wire.cpp:499] requestFrom(): i2cWriteReadNonStop returned Error 263
+
+[FAIL] BMP388 self-test failed
+```
+
+### Conclusion
+
+```text
+BMP388 absence correctly detected.
+
+I2C communication failure correctly triggers self-test failure.
+```
+
+---
+
+# Runtime Failure Tests
+
+---
+
+## T30 – Runtime BMP388 Removal
+
+### Procedure
+
+```text
+Start system normally
+Disconnect BMP388 during operation
+```
+
+### Expected
+
+```text
+BMP_READ_FAILED
+
+BMP state becomes FAILED
+
+Fault flags updated
+```
+
+### Result
+
+```text
+FAIL
+```
+
+Observed:
+
+```text
+Temperature continued updating
+
+Pressure continued updating
+
+BMP altitude continued updating
+
+BMP : OK
+```
+
+### Conclusion
+
+```text
+Runtime BMP388 removal was not detected.
+```
+
+Possible explanations:
+
+```text
+Cached sensor values
+Runtime loss detection not implemented
+BMP driver continues using last valid readings
+```
+
+---
+
+# Known Issues
+
+## K03 – GPS Hardware Detection
+
+### Description
+
+GPS hardware absence is not differentiated from GPS present without satellite lock.
+
+### Observed
+
+```text
+GPS powered OFF
+
+↓
+
+GPS receiver PASS
+
+↓
+
+GPS Detected = YES
+
+GPS Fix = NO
+```
+
+### Expected
+
+```text
+GPS receiver WARNING/FAIL
+
+GPS Detected = NO
+```
+
+### Status
+
+```text
+OPEN
+```
+
+---
+
+## K04 – GPS Error Counter Logic
+
+### Description
+
+GPS error counter continuously increments while GPS remains in NO_FIX state.
+
+### Observed
+
+```text
+GPS Count : 186
+
+GPS Count : 197
+
+GPS Count : 207
+```
+
+without any state transition.
+
+### Expected
+
+Counter should increment only on:
+
+```text
+FIX
+↓
+NO_FIX
+```
+
+transition.
+
+Not during every execution cycle.
+
+### Status
+
+```text
+OPEN
+```
+
+---
+
+## K05 – Runtime BMP388 Loss Detection
+
+### Description
+
+BMP388 removal during operation is not detected.
+
+### Observed
+
+```text
+BMP disconnected
+
+↓
+
+BMP Status remains OK
+
+↓
+
+Measurements continue
+```
+
+### Expected
+
+```text
+BMP : FAILED
+
+BMP_READ_FAILED
+
+Fault Flag BMP active
+```
+
+### Status
+
+```text
+OPEN
+```
+
+---
+
+# Conclusions
+
+Sprint 8.1A objectives successfully validated.
+
+Validated in real hardware:
+
+```text
+POST
+Health Monitoring
+Fault Flags
+SD Diagnostics
+Runtime Event System
+SD State Machine
+SD Write Failure Detection
+SD Removal Detection
+SD Recovery Detection
+Recovery Statistics
+```
+
+Additional startup validation completed:
+
+```text
+Startup without SD
+Startup without GPS
+Startup without BMP388
+```
+
+Open diagnostic issues identified:
+
+```text
+K03 – GPS Hardware Detection
+
+K04 – GPS Error Counter Logic
+
+K05 – Runtime BMP388 Loss Detection
+```
+
+Overall Result:
+
+```text
+SPRINT 8.1A PASSED
+
+WITH 3 OPEN DIAGNOSTIC ISSUES
+```
+
+---
+
+# Next Sprint
+
+```text
+Sprint 8.1B
+
+- GPS Hardware Detection
+- GPS Error Counter Fix
+- BMP Runtime Loss Detection
+- SystemHealth Synchronization
+- SD Error Classification
+```
+
+Future:
+
+```text
+Sprint 8.2
+
+- Buffered Logging
+- Circular Buffer
+- Automatic SD Recovery
+```
