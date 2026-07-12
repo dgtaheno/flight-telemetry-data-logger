@@ -7,6 +7,7 @@
 #include "GPSSensor.h"
 #include "SystemHealth.h"
 #include "SystemEvents.h"
+#include "BufferedLogger.h"
 
 // --------------------------------------------------
 // System Modules
@@ -17,6 +18,7 @@ SDLogger logger;
 GPSSensor gps;
 SystemHealth health;
 SystemEvents events;
+BufferedLogger telemetryBuffer;
 
 // --------------------------------------------------
 // Timing
@@ -114,6 +116,35 @@ void reportGpsHealth(
 }
 
 // --------------------------------------------------
+// Helper: Print Buffer Status
+// --------------------------------------------------
+
+void printBufferStatus()
+{
+    Serial.println();
+    Serial.println("Buffered Logger");
+    Serial.println("--------------------------------");
+
+    Serial.print("Buffered Records : ");
+    Serial.println(telemetryBuffer.size());
+
+    Serial.print("Buffer Capacity  : ");
+    Serial.println(telemetryBuffer.capacity());
+
+    Serial.print("Free Space       : ");
+    Serial.println(telemetryBuffer.freeSpace());
+
+    Serial.print("Dropped Records  : ");
+    Serial.println(telemetryBuffer.getDroppedRecords());
+
+    Serial.print("Total Buffered   : ");
+    Serial.println(telemetryBuffer.getTotalBuffered());
+
+    Serial.println("--------------------------------");
+    Serial.println();
+}
+
+// --------------------------------------------------
 // Helper: Print System Health Periodically
 // --------------------------------------------------
 
@@ -128,6 +159,8 @@ void printHealthIfNeeded()
         health.printStatus();
 
         events.printSdState();
+
+        printBufferStatus();
     }
 
 #endif
@@ -156,6 +189,37 @@ void setup()
 
     Serial.println("Running Power-On Self Test (POST)...");
     Serial.println();
+
+    // --------------------------------------------------
+    // BufferedLogger Self-Test
+    // --------------------------------------------------
+
+    Serial.println("BufferedLogger Self-Test");
+
+    TelemetryRecord test;
+    test.timestamp = 123;
+
+    if (!telemetryBuffer.push(test))
+    {
+        Serial.println("[FAIL] BufferedLogger push");
+    }
+    else
+    {
+        TelemetryRecord out;
+
+        if (!telemetryBuffer.pop(out))
+        {
+            Serial.println("[FAIL] BufferedLogger pop");
+        }
+        else if (out.timestamp != 123)
+        {
+            Serial.println("[FAIL] BufferedLogger FIFO");
+        }
+        else
+        {
+            Serial.println("[PASS] BufferedLogger");
+        }
+    }
 
     // --------------------------------------------------
     // BMP388
@@ -379,6 +443,8 @@ void setup()
         EVENT_SYSTEM_READY);
 
     health.printStatus();
+
+    printBufferStatus();
 }
 
 // --------------------------------------------------
@@ -457,6 +523,7 @@ void loop()
 
 #else
 
+        bool gpsDetected = false;
         bool gpsFix = false;
 
         double latitude = 0.0;
@@ -499,20 +566,42 @@ void loop()
         }
 
         // --------------------------------------------------
+        // Create Telemetry Record
+        // --------------------------------------------------
+
+        TelemetryRecord record;
+
+        record.timestamp = millis() / 1000;
+
+        record.temperature = temperature;
+        record.pressure = pressure;
+        record.bmpAltitude = bmpAltitude;
+
+        record.gpsFix = gpsFix;
+
+        record.latitude = latitude;
+        record.longitude = longitude;
+
+        record.gpsAltitude = gpsAltitude;
+        record.flightAltitude = flightAltitude;
+
+        record.speed = gpsSpeed;
+
+        // --------------------------------------------------
         // Store Telemetry
         // --------------------------------------------------
 
         bool writeOk = logger.writeData(
-            millis() / 1000,
-            temperature,
-            pressure,
-            bmpAltitude,
-            gpsFix,
-            latitude,
-            longitude,
-            gpsAltitude,
-            flightAltitude,
-            gpsSpeed);
+            record.timestamp,
+            record.temperature,
+            record.pressure,
+            record.bmpAltitude,
+            record.gpsFix,
+            record.latitude,
+            record.longitude,
+            record.gpsAltitude,
+            record.flightAltitude,
+            record.speed);
 
         // --------------------------------------------------
         // SD State Machine
@@ -522,6 +611,22 @@ void loop()
             true,
             writeOk,
             logger.isStorageFull());
+
+        // --------------------------------------------------
+        // Buffered Logging
+        // --------------------------------------------------
+
+        if (!writeOk)
+        {
+            bool buffered = telemetryBuffer.push(
+                record);
+
+            if (!buffered)
+            {
+                events.logEvent(
+                    EVENT_BUFFER_OVERFLOW);
+            }
+        }
 
         // --------------------------------------------------
         // Health Reporting
