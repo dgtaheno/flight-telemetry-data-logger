@@ -1,9 +1,5 @@
 #include "BufferedLogger.h"
 
-// --------------------------------------------------
-// Constructor
-// --------------------------------------------------
-
 BufferedLogger::BufferedLogger()
 {
     head = 0;
@@ -13,10 +9,6 @@ BufferedLogger::BufferedLogger()
     droppedRecords = 0;
     totalBuffered = 0;
 }
-
-// --------------------------------------------------
-// Push Record
-// --------------------------------------------------
 
 bool BufferedLogger::push(
     const TelemetryRecord& record)
@@ -29,7 +21,9 @@ bool BufferedLogger::push(
 
     buffer[head] = record;
 
-    head = (head + 1) % BUFFERED_LOGGER_CAPACITY;
+    head =
+        (head + 1) %
+        BUFFERED_LOGGER_CAPACITY;
 
     count++;
 
@@ -38,9 +32,18 @@ bool BufferedLogger::push(
     return true;
 }
 
-// --------------------------------------------------
-// Pop Record
-// --------------------------------------------------
+bool BufferedLogger::peek(
+    TelemetryRecord& record) const
+{
+    if (isEmpty())
+    {
+        return false;
+    }
+
+    record = buffer[tail];
+
+    return true;
+}
 
 bool BufferedLogger::pop(
     TelemetryRecord& record)
@@ -52,16 +55,14 @@ bool BufferedLogger::pop(
 
     record = buffer[tail];
 
-    tail = (tail + 1) % BUFFERED_LOGGER_CAPACITY;
+    tail =
+        (tail + 1) %
+        BUFFERED_LOGGER_CAPACITY;
 
     count--;
 
     return true;
 }
-
-// --------------------------------------------------
-// Clear Buffer
-// --------------------------------------------------
 
 void BufferedLogger::clear()
 {
@@ -69,10 +70,6 @@ void BufferedLogger::clear()
     tail = 0;
     count = 0;
 }
-
-// --------------------------------------------------
-// Buffer Status
-// --------------------------------------------------
 
 bool BufferedLogger::isEmpty() const
 {
@@ -98,10 +95,6 @@ size_t BufferedLogger::freeSpace() const
 {
     return BUFFERED_LOGGER_CAPACITY - count;
 }
-
-// --------------------------------------------------
-// Statistics
-// --------------------------------------------------
 
 uint32_t BufferedLogger::getDroppedRecords() const
 {

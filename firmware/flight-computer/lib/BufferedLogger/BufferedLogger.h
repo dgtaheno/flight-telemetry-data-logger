@@ -2,17 +2,9 @@
 
 #include <Arduino.h>
 
-// --------------------------------------------------
-// Configuration
-// --------------------------------------------------
-
 #ifndef BUFFERED_LOGGER_CAPACITY
 #define BUFFERED_LOGGER_CAPACITY 100
 #endif
-
-// --------------------------------------------------
-// Telemetry Record
-// --------------------------------------------------
 
 struct TelemetryRecord
 {
@@ -33,19 +25,11 @@ struct TelemetryRecord
     float speed;
 };
 
-// --------------------------------------------------
-// Buffered Logger
-// --------------------------------------------------
-
 class BufferedLogger
 {
 public:
 
     BufferedLogger();
-
-    // ----------------------------------------------
-    // Buffer Operations
-    // ----------------------------------------------
 
     bool push(
         const TelemetryRecord& record);
@@ -53,11 +37,10 @@ public:
     bool pop(
         TelemetryRecord& record);
 
-    void clear();
+    bool peek(
+        TelemetryRecord& record) const;
 
-    // ----------------------------------------------
-    // Buffer Status
-    // ----------------------------------------------
+    void clear();
 
     bool isEmpty() const;
 
@@ -68,10 +51,6 @@ public:
     size_t capacity() const;
 
     size_t freeSpace() const;
-
-    // ----------------------------------------------
-    // Statistics
-    // ----------------------------------------------
 
     uint32_t getDroppedRecords() const;
 

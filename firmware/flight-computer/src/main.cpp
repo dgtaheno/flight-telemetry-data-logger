@@ -42,6 +42,79 @@ bool gpsWarningActive = false;
 GpsErrorCode activeGpsWarning = GPS_ERROR_NONE;
 
 // --------------------------------------------------
+// Helper: Write Telemetry Record to SD
+// --------------------------------------------------
+
+bool writeTelemetryRecordToSd(
+    const TelemetryRecord& record)
+{
+    return logger.writeData(
+        record.timestamp,
+        record.temperature,
+        record.pressure,
+        record.bmpAltitude,
+        record.gpsFix,
+        record.latitude,
+        record.longitude,
+        record.gpsAltitude,
+        record.flightAltitude,
+        record.speed);
+}
+
+// --------------------------------------------------
+// Helper: Flush Buffered Telemetry Records
+// --------------------------------------------------
+
+bool flushBufferedRecords()
+{
+    if (telemetryBuffer.isEmpty())
+    {
+        return true;
+    }
+
+    events.logEvent(
+        EVENT_BUFFER_FLUSH_STARTED);
+
+    while (!telemetryBuffer.isEmpty())
+    {
+        TelemetryRecord pendingRecord;
+
+        // IMPORTANT:
+        // Use peek() first to preserve FIFO order.
+        // Only remove the record from the buffer
+        // after it has been written successfully.
+        if (!telemetryBuffer.peek(pendingRecord))
+        {
+            return false;
+        }
+
+        bool writeOk =
+            writeTelemetryRecordToSd(
+                pendingRecord);
+
+        events.updateSdState(
+            true,
+            writeOk,
+            logger.isStorageFull());
+
+        if (!writeOk)
+        {
+            return false;
+        }
+
+        TelemetryRecord discardedRecord;
+
+        telemetryBuffer.pop(
+            discardedRecord);
+    }
+
+    events.logEvent(
+        EVENT_BUFFER_FLUSH_COMPLETED);
+
+    return true;
+}
+
+// --------------------------------------------------
 // Helper: Update SD Health Information
 // --------------------------------------------------
 
@@ -116,35 +189,6 @@ void reportGpsHealth(
 }
 
 // --------------------------------------------------
-// Helper: Print Buffer Status
-// --------------------------------------------------
-
-void printBufferStatus()
-{
-    Serial.println();
-    Serial.println("Buffered Logger");
-    Serial.println("--------------------------------");
-
-    Serial.print("Buffered Records : ");
-    Serial.println(telemetryBuffer.size());
-
-    Serial.print("Buffer Capacity  : ");
-    Serial.println(telemetryBuffer.capacity());
-
-    Serial.print("Free Space       : ");
-    Serial.println(telemetryBuffer.freeSpace());
-
-    Serial.print("Dropped Records  : ");
-    Serial.println(telemetryBuffer.getDroppedRecords());
-
-    Serial.print("Total Buffered   : ");
-    Serial.println(telemetryBuffer.getTotalBuffered());
-
-    Serial.println("--------------------------------");
-    Serial.println();
-}
-
-// --------------------------------------------------
 // Helper: Print System Health Periodically
 // --------------------------------------------------
 
@@ -160,7 +204,27 @@ void printHealthIfNeeded()
 
         events.printSdState();
 
-        printBufferStatus();
+        Serial.println();
+        Serial.println("Buffered Logging");
+        Serial.println("--------------------------------");
+
+        Serial.print("Buffered Records : ");
+        Serial.println(telemetryBuffer.size());
+
+        Serial.print("Buffer Capacity  : ");
+        Serial.println(telemetryBuffer.capacity());
+
+        Serial.print("Buffer Free      : ");
+        Serial.println(telemetryBuffer.freeSpace());
+
+        Serial.print("Dropped Records  : ");
+        Serial.println(telemetryBuffer.getDroppedRecords());
+
+        Serial.print("Total Buffered   : ");
+        Serial.println(telemetryBuffer.getTotalBuffered());
+
+        Serial.println("--------------------------------");
+        Serial.println();
     }
 
 #endif
@@ -196,7 +260,7 @@ void setup()
 
     Serial.println("BufferedLogger Self-Test");
 
-    TelemetryRecord test;
+    TelemetryRecord test = {};
     test.timestamp = 123;
 
     if (!telemetryBuffer.push(test))
@@ -205,7 +269,7 @@ void setup()
     }
     else
     {
-        TelemetryRecord out;
+        TelemetryRecord out = {};
 
         if (!telemetryBuffer.pop(out))
         {
@@ -443,8 +507,6 @@ void setup()
         EVENT_SYSTEM_READY);
 
     health.printStatus();
-
-    printBufferStatus();
 }
 
 // --------------------------------------------------
@@ -569,7 +631,7 @@ void loop()
         // Create Telemetry Record
         // --------------------------------------------------
 
-        TelemetryRecord record;
+        TelemetryRecord record = {};
 
         record.timestamp = millis() / 1000;
 
@@ -591,40 +653,41 @@ void loop()
         // Store Telemetry
         // --------------------------------------------------
 
-        bool writeOk = logger.writeData(
-            record.timestamp,
-            record.temperature,
-            record.pressure,
-            record.bmpAltitude,
-            record.gpsFix,
-            record.latitude,
-            record.longitude,
-            record.gpsAltitude,
-            record.flightAltitude,
-            record.speed);
+        bool writeOk = false;
 
-        // --------------------------------------------------
-        // SD State Machine
-        // --------------------------------------------------
-
-        events.updateSdState(
-            true,
-            writeOk,
-            logger.isStorageFull());
-
-        // --------------------------------------------------
-        // Buffered Logging
-        // --------------------------------------------------
-
-        if (!writeOk)
+        if (!telemetryBuffer.isEmpty())
         {
-            bool buffered = telemetryBuffer.push(
-                record);
-
-            if (!buffered)
+            if (!telemetryBuffer.push(record))
             {
                 events.logEvent(
                     EVENT_BUFFER_OVERFLOW);
+            }
+
+            writeOk =
+                flushBufferedRecords();
+        }
+        else
+        {
+            writeOk =
+                writeTelemetryRecordToSd(record);
+
+            events.updateSdState(
+                true,
+                writeOk,
+                logger.isStorageFull());
+
+            if (!writeOk)
+            {
+                if (!telemetryBuffer.push(record))
+                {
+                    events.logEvent(
+                        EVENT_BUFFER_OVERFLOW);
+                }
+                else
+                {
+                    events.logEvent(
+                        EVENT_BUFFER_RECORD_STORED);
+                }
             }
         }
 
