@@ -1,128 +1,152 @@
-# Flight Telemetry & Data Logger
+# 🚀 Flight Telemetry & Data Logger
 
-> Modular ESP32-based flight computer featuring GPS telemetry, barometric altitude measurement, runtime event detection, health monitoring and timestamped flight logging.
+> ESP32-based flight computer featuring GPS telemetry, barometric altitude measurement, runtime diagnostics, health monitoring and fault-tolerant flight data logging.
+
+![Project Banner](docs/images/banner.png)
 
 ![Platform](https://img.shields.io/badge/Platform-ESP32-blue)
 ![GPS](https://img.shields.io/badge/GPS-NEO--M9N-green)
 ![Sensor](https://img.shields.io/badge/Sensor-BMP388-orange)
-![Status](https://img.shields.io/badge/Status-v0.8.1-success)
-![Health](https://img.shields.io/badge/System_Health-Enabled-success)
-![Events](https://img.shields.io/badge/Event_System-Enabled-success)
+![Status](https://img.shields.io/badge/Status-v0.8.2-success)
+![Language](https://img.shields.io/badge/Language-C%2B%2B-blue)
+![PlatformIO](https://img.shields.io/badge/PlatformIO-Enabled-success)
 
 ---
 
 # Overview
 
-Flight Telemetry & Data Logger is an ESP32-based flight computer designed for telemetry, data acquisition and future flight analysis.
+Flight Telemetry & Data Logger is a modular ESP32-based flight computer designed for telemetry acquisition, altitude estimation and reliable flight data recording.
 
 The project combines:
 
-- GPS navigation and positioning
+- GPS positioning and navigation
 - Barometric altitude measurement
 - Flight altitude estimation
-- Automatic CSV data logging
-- Power-On Self Test (POST)
-- Runtime Event System
-- System Health Monitoring
-- SD card diagnostics
-- SD recovery detection
-- Fault detection and reporting
+- CSV data logging
+- Runtime health monitoring
+- Event-driven diagnostics
+- SD card recovery detection
+- Buffered telemetry storage
+- Automatic buffer flushing
+- FIFO-preserved data recovery
 
----
-
-# Features
-
-## GPS Navigation
-
-- GPS Detection
-- GPS FIX Detection
-- Latitude and Longitude Logging
-- GPS Altitude
-- Ground Speed Measurement
-- UTC Time Acquisition
-- Automatic Local Time Conversion
-- GPS Timestamped Log Filenames
-
----
-
-## Flight Altitude System
-
-- GPS Altitude Reference Capture
-- BMP388 Relative Altitude
-- Flight Altitude Calculation
-- Stable Altitude Reference
-- GPS Speed Deadband Filtering
-
----
-
-## Data Logging
-
-- Automatic CSV Generation
-- FAT32 Support
-- Session Based Flight Recording
-- Timestamped Flight Logs
-- GPS-Based Filenames
-- Fallback Filenames
-- SD Recovery Support
-
----
-
-## Reliability
-
-- Power-On Self Test (POST)
-- Hardware Validation at Startup
-- Runtime Health Monitoring
-- Fault Flags
-- Error Counters
-- SD Diagnostics
-- SD State Machine
-- SD Removal Detection
-- SD Recovery Detection
-- Runtime Event System
-- Modular Architecture
+All features documented in this repository have been validated on real hardware.
 
 ---
 
 # Hardware
 
-## Main Controller
+The current prototype uses commercial off-the-shelf modules validated during development.
+
+## ESP32 DevKitC V4
+
+Main controller responsible for:
+
+- Sensor acquisition
+- Telemetry processing
+- Data logging
+- Runtime diagnostics
+- Health monitoring
+- Event management
+
+---
+
+## BMP388 Barometric Sensor
+
+![BMP388](docs/images/BMP388.png)
+
+Provides:
+
+- Pressure measurement
+- Temperature measurement
+- Relative altitude estimation
+
+Configuration:
 
 ```text
-ESP32 DevKitC V4
+Interface : I²C
+
+SDA : GPIO21
+SCL : GPIO22
+
+Power : 3.3V
+
+CS  : NC
+SDO : NC
+INT : NC
 ```
 
-## Sensors
+---
+
+## u-blox NEO-M9N GPS Receiver
+
+![NEO-M9N](docs/images/M9N.png)
+
+Provides:
+
+- GPS position
+- GPS altitude
+- UTC time
+- Ground speed
+
+Configuration:
 
 ```text
-BMP388
-u-blox NEO-M9N
+Interface : UART2
+
+TX : GPIO16
+RX : GPIO17
+
+Power : 5V
 ```
 
-## Storage
+---
+
+## MicroSD Storage Module
+
+![MicroSD](docs/images/microsd.png)
+
+Used for:
+
+- Flight log storage
+- Telemetry recording
+- Buffered recovery validation
+
+Configuration:
 
 ```text
-MicroSD Card
+Interface : SPI
+
+CS   : GPIO5
+SCK  : GPIO18
+MISO : GPIO19
+MOSI : GPIO23
+
+Power : 5V
 ```
 
-## Power
+---
 
-```text
-5V System Rail
-3.3V Sensor Rail
-```
+# Wiring Diagram
+
+The prototype hardware configuration is documented using KiCad and reflects the validated hardware setup.
+
+![Wiring Diagram](docs/schematics/flighttelemetry-v082.png)
 
 ---
 
 # System Architecture
 
 ```text
-ESP32
+ESP32 DevKitC V4
 │
 ├── BMP388Sensor
 │
 ├── GPSSensor
 │
 ├── SDLogger
+│
+├── BufferedLogger
 │
 ├── SystemHealth
 │
@@ -133,71 +157,85 @@ ESP32
 
 ---
 
-# System Health Monitoring
+# Features
 
-The system continuously monitors the operational state of all critical subsystems.
+## Telemetry
 
-Currently monitored:
+✅ GPS Position
 
-```text
-GPS Receiver
-BMP388 Sensor
-MicroSD Storage
-```
+✅ GPS Altitude
 
----
+✅ Ground Speed
 
-## Health States
+✅ UTC Time Acquisition
 
-```text
-OK
-WARNING
-FAILED
-```
+✅ GPS Timestamp Generation
 
 ---
 
-## Fault Flags
+## Altitude System
 
-```text
-GPS = 0x01
-BMP = 0x02
-SD  = 0x04
-```
+✅ BMP388 Pressure Measurement
 
-Example:
+✅ BMP388 Temperature Measurement
 
-```text
-Fault Flags = 0x04
+✅ Relative Altitude Calculation
 
-SD failure active
-```
+✅ Flight Altitude Estimation
+
+✅ GPS Speed Deadband Filtering
 
 ---
 
-## Error Counters
+## Logging
 
-The system records runtime failures for:
+✅ Automatic CSV Logging
 
-```text
-GPS
-BMP388
-SD Storage
-```
+✅ FAT32 Support
 
-Example:
+✅ GPS-Based Filenames
 
-```text
-GPS Errors : 1
-BMP Errors : 0
-SD Errors  : 3
-```
+✅ Fallback Filenames
+
+✅ Session-Based Recording
+
+✅ Buffered Logging
+
+✅ Automatic Buffer Flush
+
+✅ FIFO Order Preservation
+
+✅ Automatic Recovery After SD Reinsertion
+
+---
+
+## Reliability
+
+✅ Power-On Self Test (POST)
+
+✅ Runtime Health Monitoring
+
+✅ Fault Flags
+
+✅ Error Counters
+
+✅ Runtime Event System
+
+✅ SD Diagnostics
+
+✅ SD State Machine
+
+✅ SD Removal Detection
+
+✅ SD Recovery Detection
+
+✅ Fault-Tolerant Logging
+
+✅ No Telemetry Loss During SD Recovery
 
 ---
 
 # Runtime Event System
-
-The firmware includes a runtime event detection and notification system.
 
 Supported events:
 
@@ -212,129 +250,33 @@ GPS_FIX_ACQUIRED
 GPS_FIX_LOST
 
 SD_DETECTED
+
 SD_WRITE_FAILED
 SD_REMOVED
 SD_INSERTED
 SD_RECOVERED
+
+BUFFER_FLUSH_COMPLETED
 ```
 
 Example:
 
 ```text
 [EVENT] SD_WRITE_FAILED
-
 [EVENT] SD_REMOVED
 
 ...
 
 [EVENT] SD_INSERTED
-
 [EVENT] SD_RECOVERED
-```
-
----
-
-# SD State Machine
-
-The storage subsystem maintains an internal runtime state machine.
-
-States:
-
-```text
-OK
-WRITE_FAILED
-REMOVED
-RECOVERED
-FULL
-```
-
-Example:
-
-```text
-SD Runtime State
---------------------------------
-
-State               : REMOVED
-
-Consecutive Failures: 4
-
-Write Failures      : 4
-
-Removal Count       : 1
-
-Recovery Count      : 0
-```
-
----
-
-# SD Diagnostics
-
-Continuous SD monitoring includes:
-
-```text
-Total Capacity
-Used Capacity
-Free Capacity
-Usage Percentage
-```
-
-Example:
-
-```text
-SD Usage : 42 %
-
-SD Total : 59992 MB
-SD Used  : 25196 MB
-SD Free  : 34796 MB
-```
-
----
-
-## Storage Warning Levels
-
-```text
-WARNING  : 80 %
-CRITICAL : 95 %
-FULL     : 99 %
-```
-
-Supported SD Error Codes:
-
-```text
-NOT_INITIALIZED
-CARD_REMOVED
-CARD_FULL
-OPEN_FAILED
-WRITE_FAILED
-FILE_CREATION_FAILED
-SELFTEST_FAILED
-STORAGE_WARNING
-STORAGE_CRITICAL
+[EVENT] BUFFER_FLUSH_COMPLETED
 ```
 
 ---
 
 # Flight Altitude Model
 
-The system intentionally combines two altitude sources.
-
-## GPS
-
-Provides:
-
-```text
-Absolute altitude above sea level
-```
-
-## BMP388
-
-Provides:
-
-```text
-Relative altitude from takeoff point
-```
-
-## Result
+The project combines two independent altitude sources.
 
 ```text
 Flight Altitude
@@ -348,11 +290,11 @@ BMP388 Relative Altitude
 Example:
 
 ```text
-Takeoff altitude : 123.4 m
+Takeoff Altitude : 123.4 m
 
 Climb            : +150.0 m
 
-Flight altitude  : 273.4 m
+Flight Altitude  : 273.4 m
 ```
 
 ---
@@ -400,23 +342,27 @@ speed_kmh
 
 # Validation Status
 
-## Successfully Validated
+Validated on real hardware:
 
 ✅ POST Validation
-
-✅ Startup without SD
 
 ✅ Startup without GPS
 
 ✅ Startup without BMP388
 
+✅ Startup without SD
+
+✅ Runtime GPS Detection
+
 ✅ Runtime GPS Loss Detection
 
-✅ Fault Flags
+✅ GPS Detection Timeout
 
-✅ Error Counters
+✅ GPS Stale Data Timeout
 
-✅ Health Monitoring
+✅ GPS Fix Timeout
+
+✅ GPS Speed Deadband
 
 ✅ SD Diagnostics
 
@@ -430,187 +376,168 @@ speed_kmh
 
 ✅ Recovery Statistics
 
-✅ GPS Detection Timeout
+✅ Fault Flags
 
-✅ GPS Stale Data Timeout
+✅ Error Counters
 
-✅ GPS Fix Timeout
+✅ Health Monitoring
 
-✅ GPS Speed Deadband
+✅ Buffered Logging
 
-✅ CSV Recovery Validation
+✅ Automatic Buffer Flush
+
+✅ FIFO Recovery Validation
+
+✅ No Telemetry Loss During SD Failure
 
 ---
 
-## CSV Recovery Validation
+# Buffered Logging Validation
 
-The system resumes logging after SD recovery.
-
-Observed sequence:
+Scenario:
 
 ```text
-24
+SD card removed during active logging
 
-...
+↓
 
-65
+Telemetry stored in RAM buffer
 
-...
+↓
 
-106
+SD card reinserted
+
+↓
+
+Automatic flush executed
+
+↓
+
+Buffered records written to CSV
+
+↓
+
+Buffer returns to zero
 ```
 
-Result:
+Validated:
 
 ```text
-Logging resumes correctly.
+✅ Automatic SD Recovery
 
-Records generated while the SD card is unavailable
-are currently lost.
+✅ Automatic Buffer Flush
+
+✅ FIFO Order Preservation
+
+✅ No Telemetry Loss
 ```
-
-This behavior will be addressed in the Buffered Logging sprint.
 
 ---
 
 # Current Status
 
-## Completed
+Release:
 
-✅ ESP32 Bring-Up
+```text
+v0.8.2
+```
 
-✅ BMP388 Integration
+Completed:
 
-✅ GPS Integration
+```text
+ESP32 Bring-Up
 
-✅ TinyGPSPlus Integration
+BMP388 Integration
 
-✅ SD Logging
+GPS Integration
 
-✅ Power-On Self Test
+TinyGPSPlus Integration
 
-✅ Health Monitoring
+SD Logging
 
-✅ Runtime Event System
+Power-On Self Test
 
-✅ Fault Flags
+Health Monitoring
 
-✅ Error Counters
+Runtime Event System
 
-✅ SD Diagnostics
+Fault Flags
 
-✅ SD State Machine
+Error Counters
 
-✅ GPS Runtime Detection
+SD Diagnostics
 
-✅ GPS Startup Detection
+SD State Machine
 
-✅ SD Recovery Detection
+GPS Runtime Detection
 
-✅ CSV Recovery Validation
+GPS Startup Detection
+
+SD Recovery Detection
+
+Buffered Logging
+
+Automatic Buffer Flush
+
+FIFO Recovery Validation
+```
 
 ---
 
-## In Progress
+# Planned Features
 
-🔄 Buffered Logging
+```text
+Flight Analytics
 
-🔄 Circular Buffer
+LoRa Telemetry
 
-🔄 Pending Records Counter
+Ground Station Dashboard
 
-🔄 Automatic SD Flush
+INA219 Power Monitoring
 
----
+Battery Telemetry
 
-## Planned
-
-⏳ LoRa Telemetry
-
-⏳ INA219 Power Monitoring
-
-⏳ Ground Station Dashboard
-
-⏳ Flight Analytics
-
-⏳ FreeRTOS Architecture
+FreeRTOS Architecture
+```
 
 ---
 
 # Roadmap
 
-## Sprint 8.0
-
-```text
-Health Monitoring
-Fault Flags
-Error Counters
-SD Diagnostics
-Storage Monitoring
-```
-
-## Sprint 8.1A
-
-```text
-SD State Machine
-SD Remove Detection
-SD Recovery Detection
-Runtime Event System
-Recovery Statistics
-```
-
-## Sprint 8.1B
-
-```text
-GPS Hardware Detection
-GPS Runtime Loss Detection
-GPS Error Counter Logic
-Configuration Validation
-CSV Recovery Validation
-```
-
-## Sprint 8.2
-
-```text
-Buffered Logging
-Circular Buffer
-Pending Records Counter
-Automatic SD Flush
-Automatic SD Recovery Storage
-```
-
-## Sprint 9
-
-```text
-LoRa Telemetry
-Ground Station Integration
-Real-Time Data Transmission
-```
-
-## Sprint 10
-
-```text
-INA219 Power Monitoring
-Battery Telemetry
-Current Logging
-```
-
-## Sprint 11
+## v0.9.x
 
 ```text
 Flight Analytics
+
 Maximum Altitude
 Maximum Speed
 Flight Duration
-Vertical Speed
+Vertical Velocity
 ```
 
-## Sprint 12
+---
+
+## v1.0
 
 ```text
-FreeRTOS Architecture
-Dual Core Utilization
+LoRa Telemetry
+
+Ground Station
+
+Real-Time Data Transmission
+```
+
+---
+
+## Future
+
+```text
+INA219 Power Monitoring
+
+FreeRTOS Migration
+
 Task Separation
+
 Telemetry Queues
 ```
 
@@ -622,19 +549,27 @@ Telemetry Queues
 flight-telemetry-data-logger
 │
 ├── include
-│   └── Config.h
 │
 ├── lib
 │   ├── BMP388Sensor
 │   ├── GPSSensor
 │   ├── SDLogger
+│   ├── BufferedLogger
 │   ├── SystemHealth
 │   └── SystemEvents
 │
 ├── src
-│   └── main.cpp
 │
 ├── docs
+│   ├── images
+│   │   ├── banner.png
+│   │   ├── BMP388.png
+│   │   ├── M9N.png
+│   │   └── microsd.png
+│   │
+│   ├── schematics
+│   │   └── flighttelemetry-v082.png
+│   │
 │   └── TestReport_Sprint8.md
 │
 └── README.md
